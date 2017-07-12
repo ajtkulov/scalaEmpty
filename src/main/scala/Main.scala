@@ -7,13 +7,14 @@ import akka.actor.ActorSystem
 import akka.kafka.ConsumerMessage.CommittableOffsetBatch
 import akka.kafka.{ConsumerSettings, ProducerMessage, Subscriptions}
 import akka.kafka.scaladsl.{Consumer, Producer}
-import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.Sink
+import akka.stream.{ActorMaterializer, ThrottleMode}
+import akka.stream.scaladsl.{Sink, Source}
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
-import scala.concurrent.ExecutionContext.Implicits.global
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
 import scala.concurrent.Future
 
 object Main extends App {
@@ -21,13 +22,17 @@ object Main extends App {
   implicit val system = ActorSystem("PlainSourceConsumerMain")
   implicit val materializer = ActorMaterializer()
 
-  override def main(args: Array[String]): Unit = {
-//    produce
-    consume
-  }
+  Source.cycle(() => Iterator(1, 2, 3, 4, 5))
+    .throttle(10, 800 milli, 20, ThrottleMode.Shaping)
+    .groupBy(100, identity)
+    .groupedWithin(20, 5 second)
+    .map(x => {
+      println(x)
+      x.sum
+    })
+    .mergeSubstreams
+    .runWith(Sink.foreach(println))
 
-
-//  val consumerSettings = ConsumerSettings(system, new ByteArrayDeserializer, new StringDeserializer)
   val consumerSettings = ConsumerSettings(system, new StringDeserializer, new StringDeserializer)
     .withBootstrapServers("localhost:9092")
     .withGroupId("group1")
@@ -66,7 +71,6 @@ object Main extends App {
 
     producer.close()
   }
-
 
 
 }
