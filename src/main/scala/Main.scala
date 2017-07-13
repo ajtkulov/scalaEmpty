@@ -9,6 +9,7 @@ import akka.kafka.{ConsumerSettings, ProducerMessage, Subscriptions}
 import akka.kafka.scaladsl.{Consumer, Producer}
 import akka.stream.{ActorMaterializer, ThrottleMode}
 import akka.stream.scaladsl.{Sink, Source}
+import model.{Aggregator, Pageview}
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, StringDeserializer}
@@ -22,13 +23,13 @@ object Main extends App {
   implicit val system = ActorSystem("PlainSourceConsumerMain")
   implicit val materializer = ActorMaterializer()
 
-  Source.cycle(() => Iterator(1, 2, 3, 4, 5))
-    .throttle(10, 800 milli, 20, ThrottleMode.Shaping)
-    .groupBy(100, identity)
-    .groupedWithin(20, 5 second)
+  Source.cycle(() => Iterator.continually[Pageview](Pageview.gen))
+    .throttle(100, 800 milli, 200, ThrottleMode.Shaping)
+    .groupBy(100, x => (x.appId, Pageview.instantRounded(x.time)))
+    .groupedWithin(500, 5 second)
     .map(x => {
-      println(x)
-      x.sum
+//      println(x)
+      Aggregator.handle(x)
     })
     .mergeSubstreams
     .runWith(Sink.foreach(println))

@@ -18,7 +18,8 @@ import scala.concurrent.Future
 /**
   * Created by marksu on 8/31/16.
   */
-object PlainSourceConsumerMain extends App {
+//object PlainSourceConsumerMain extends App {
+object PlainSourceConsumerMain {
   implicit val system = ActorSystem("PlainSourceConsumerMain")
   implicit val materializer = ActorMaterializer()
 

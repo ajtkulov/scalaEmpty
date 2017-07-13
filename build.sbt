@@ -21,3 +21,5 @@ libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.5"
 libraryDependencies += "org.slf4j" % "log4j-over-slf4j" % "1.7.16"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-stream-kafka" % "0.16"
+
+libraryDependencies += "joda-time" % "joda-time" % "2.9.7"
