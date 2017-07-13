@@ -31,7 +31,11 @@ object Pageview {
 
 case class StatKey(appId: String, begin: Instant)
 
-case class StatValue(count: Int, topUrls: Map[String, Int])
+case class StatValue(count: Int, topUrls: Map[String, Int]) {
+  def +(other: StatValue): StatValue = {
+    StatValue(count + other.count, (topUrls.toList ++ other.topUrls).countByValue)
+  }
+}
 
 case class Stat(key: StatKey, value: StatValue)
 

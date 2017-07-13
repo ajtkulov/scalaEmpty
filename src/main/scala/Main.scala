@@ -24,7 +24,7 @@ object Main extends App {
   implicit val materializer = ActorMaterializer()
 
   Source.cycle(() => Iterator.continually[Pageview](Pageview.gen))
-    .throttle(100, 800 milli, 200, ThrottleMode.Shaping)
+    .throttle(1000, 800 milli, 2000, ThrottleMode.Shaping)
     .groupBy(100, x => (x.appId, Pageview.instantRounded(x.time)))
     .groupedWithin(500, 5 second)
     .map(x => {

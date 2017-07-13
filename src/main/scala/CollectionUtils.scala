@@ -31,4 +31,17 @@ object CollectionUtils {
     }
   }
 
+  /**
+    * Count by value
+    *
+    * @param values values
+    * @tparam T   value type
+    * @tparam Num numeric type
+    */
+  implicit class CountByValues[T, Num](values: Seq[(T, Num)]) {
+    def countByValue(implicit t: Numeric[Num]): Map[T, Num] = {
+      values.groupBy(_._1).mapValues(x => x.map(x => x._2).sum).toSerializable
+    }
+  }
+
 }
