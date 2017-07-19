@@ -34,7 +34,7 @@ class AggregateActor extends Actor {
   }
 
   def get(appId: String, value: State): Result = {
-    val values = value.filterKeys(x => x.appId == appId).values.toList
+    val values = value.filterKeys(x => x.appId == appId).toList.sortBy(_._1.begin).map(_._2)
 
     Result(appId, values.map(x => x.count).sum)
   }
