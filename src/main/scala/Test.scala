@@ -1,0 +1,4 @@
+@NoCompanion
+object Test {
+
+}
