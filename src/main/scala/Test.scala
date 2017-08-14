@@ -1,4 +1,4 @@
-@NoCompanion
+@noCompanion
 object Test {
 
 }
