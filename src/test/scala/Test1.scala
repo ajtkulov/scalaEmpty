@@ -4,10 +4,13 @@ class Test1 extends FunSuite {
   test("test-1") {
 
 
+//    object Some1 {}
+
     @Companion
     case class Some1(a: Int)
 
     """1 + 1""" should compile
+
 
 
   }
