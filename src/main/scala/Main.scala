@@ -13,6 +13,22 @@ object Main extends App {
       } + 1
     }
 
+
+    reset {
+      println("A")
+      shift { k1: (Unit => Unit) =>
+        println("B")
+        k1()
+        println("C")
+      }
+      println("D")
+      shift { k2: (Unit => Unit) =>
+        println("E")
+        k2()
+        println("F")
+      }
+      println("G")
+    }
     println(1)
   }
 }
