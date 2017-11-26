@@ -2,9 +2,18 @@ package model
 
 import play.api.libs.json.{JsArray, JsObject, JsValue}
 
-case class Coor(x: BigDecimal, y: BigDecimal) {}
+case class Coor(x: BigDecimal, y: BigDecimal) {
+  def -->(dest: Coor): Coor = {
+    Coor(dest.x - x, dest.y - y)
+  }
 
-case class Poly(values: List[Coor])
+}
+
+case class Poly(values: List[Coor]) {
+  def pairs: List[(Coor, Coor)] = {
+    values.zip(values.drop(1) :+ values.head)
+  }
+}
 
 case class Model(coordinates: Array[Array[Array[BigDecimal]]])
 
@@ -32,5 +41,20 @@ object ModelReader {
     val z = (jsValue \ "geometry" \ "coordinates").as[List[List[List[BigDecimal]]]]
 
     val polys = z.map(x => toPoly(x))
+  }
+}
+
+
+object Geometry {
+  def vectorProd(x: Coor, y: Coor): BigDecimal = {
+    x.x * y.y - x.y * y.x
+  }
+
+  def sq(x: Coor, vect: (Coor, Coor)): BigDecimal = {
+    vectorProd(x --> vect._1, x --> vect._2)
+  }
+
+  def sq(c: Coor, p: Poly): BigDecimal = {
+    p.pairs.map(x => sq(c, x)).sum
   }
 }
