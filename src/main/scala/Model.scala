@@ -92,4 +92,13 @@ object Geometry {
 
     poly.pairs.count(x => intersect(x._1, x._2, s, d)) % 2 == 1
   }
+
+  def distance(a: Coor, b: Coor): BigDecimal = {
+    val sq = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
+    Math.sqrt(sq.toDouble)
+  }
+
+  def nearest(poly: Poly, d: Coor): BigDecimal = {
+    poly.values.map(distance(_, d)).min
+  }
 }
