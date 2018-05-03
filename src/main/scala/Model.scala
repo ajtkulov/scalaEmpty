@@ -1,5 +1,6 @@
 package model
 
+import org.joda.time.Instant
 import play.api.libs.json.{JsArray, JsObject, JsValue}
 
 import scala.util.{Random, Try}
@@ -19,16 +20,19 @@ case class Poly(values: List[Coor]) {
 
 case class Model(coordinates: Array[Array[Array[BigDecimal]]])
 
+case class Cloud(timeStamp: Instant, poly: Poly, precipitationStrength: Double, precipitationType: Int) {}
+
 object ModelReader {
-  def readJson(jsValue: JsValue): Unit = {
+  def readJson(jsValue: JsValue): List[Cloud] = {
 
     val obj: JsObject = jsValue.as[JsObject]
 
-    val obj1 = obj.fields.take(1).head._2
+    obj.fields.flatMap(x => readCloud(new Instant(x._1.toLong * 1000), x._2)).toList
+  }
 
-    val z = (obj1 \ "features").as[JsArray]
-
-    z.value.map(readGeo(_))
+  def readCloud(timestamp: Instant, jsValue: JsValue): List[Cloud] = {
+    val obj = jsValue.as[JsObject]
+    (obj \ "features").as[JsArray].value.flatMap(x => readGeo(timestamp, x)).toList
   }
 
   def toCoor(values: List[BigDecimal]): Coor = {
@@ -39,10 +43,10 @@ object ModelReader {
     Poly(values.map(toCoor))
   }
 
-  def readGeo(jsValue: JsValue): Unit = {
-    val z = (jsValue \ "geometry" \ "coordinates").as[List[List[List[BigDecimal]]]]
+  def readGeo(instant: Instant, jsValue: JsValue): List[Cloud] = {
+    val polies = (jsValue \ "geometry" \ "coordinates").as[List[List[List[BigDecimal]]]]
 
-    val polys = z.map(x => toPoly(x))
+    polies.map(x => Cloud(instant, toPoly(x), (jsValue \ "properties" \ "prec_strength").as[Double], (jsValue \ "properties" \ "prec_type").as[Int]))
   }
 }
 
