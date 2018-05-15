@@ -15,4 +15,10 @@ libraryDependencies += "joda-time" % "joda-time" % "2.9.7"
 
 parallelExecution in Test := false
 
+libraryDependencies += "info.mukel" %% "telegrambot4s" % "3.0.14"
+
+libraryDependencies += "org.slf4j" % "log4j-over-slf4j" % "1.7.16"
+
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.1.1"
+
 fork := true

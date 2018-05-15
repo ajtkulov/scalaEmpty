@@ -1,6 +1,6 @@
 package request
 
-import model.{Cloud, ModelReader}
+import model.{Cloud, ModelReader, Sky}
 import org.joda.time.Instant
 import play.api.libs.json.Json
 
@@ -13,7 +13,7 @@ object Request {
     scala.io.Source.fromURL(path).getLines().mkString("")
   }
 
-  def getModel(time: Instant): List[Cloud] = {
-    ModelReader.readJson(Json.parse(get(time)))
+  def getModel(time: Instant): Sky = {
+    Sky(ModelReader.readJson(Json.parse(get(time))))
   }
 }

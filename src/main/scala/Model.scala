@@ -22,6 +22,18 @@ case class Model(coordinates: Array[Array[Array[BigDecimal]]])
 
 case class Cloud(timeStamp: Instant, poly: Poly, precipitationStrength: Double, precipitationType: Int) {}
 
+case class Sky(clouds: List[Cloud]) {
+  def forecast(pos: Coor): Forecast = {
+    val inside = clouds.filter(cloud => Geometry.inside(cloud.poly, pos)).sortBy(x => x.precipitationStrength)(Ordering[Double].reverse).headOption
+
+    val nearest = clouds.map(cloud => (cloud, Geometry.nearest(cloud.poly, pos))).minBy(x => x._2)._1
+
+    Forecast(inside, nearest)
+  }
+}
+
+case class Forecast(inside: Option[Cloud], nearest: Cloud) {}
+
 object ModelReader {
   def readJson(jsValue: JsValue): List[Cloud] = {
 

@@ -12,7 +12,10 @@ object Main extends App {
     val res = ModelReader.readJson(js)
     println(res.take(5).mkString("\n\n"))
 
-    println(Request.getModel(new Instant()).mkString("\n\n"))
+    val model: Sky = Request.getModel(new Instant())
+
+    println(model.forecast(Coor(56.846230, 53.229994)))
+    println(model.forecast(Coor(31.191044, 58.247710)))
 
   }
 }
