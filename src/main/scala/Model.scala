@@ -22,7 +22,15 @@ case class Model(coordinates: Array[Array[Array[BigDecimal]]])
 
 case class Cloud(timeStamp: Instant, poly: Poly, precipitationStrength: Double, precipitationType: Int) {}
 
+case class SkyTimeLine(clouds: List[Cloud]) {
+  def forecast(pos: Coor): Map[Instant, Forecast] = {
+    clouds.groupBy(_.timeStamp).mapValues(Sky.apply).mapValues(_.forecast(pos))
+  }
+}
+
 case class Sky(clouds: List[Cloud]) {
+  require(clouds.map(_.timeStamp).distinct.size == 1)
+
   def forecast(pos: Coor): Forecast = {
     val inside = clouds.filter(cloud => Geometry.inside(cloud.poly, pos)).sortBy(x => x.precipitationStrength)(Ordering[Double].reverse).headOption
 
@@ -30,6 +38,7 @@ case class Sky(clouds: List[Cloud]) {
 
     Forecast(inside, nearest)
   }
+
 }
 
 case class Forecast(inside: Option[Cloud], nearest: Cloud) {}
