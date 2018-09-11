@@ -128,7 +128,7 @@ object Handler {
   }
 
   def isGreen(color: Color): Boolean = {
-    (color.g > 120 && color.r < 110 && color.b < 110) || (color.g > 160 && color.r < 80 && color.b < 130)
+    (color.g > color.r * 1.6)
   }
 
   def affine(f: BufferedImage, rect: Rect): BufferedImage = {
@@ -163,16 +163,16 @@ object Handler {
 
 
   def mutateAll(f: BufferedImage, rect: Rect) = {
-    //    for {
-    //      x <- 0 until  f.getWidth
-    //      y <- 0 until  f.getHeight
-    //      if isGreen(f.getColor(x, y))
-    //    } f.setRGB(x, y, 0)
+        for {
+          x <- 0 until  f.getWidth
+          y <- 0 until  f.getHeight
+          if isGreen(f.getColor(x, y))
+        } f.setRGB(x, y, 0)
 
-    mutate(f, Pos(1823, 1093))
-    mutate(f, Pos(606, 1201))
-    mutate(f, Pos(1767, 351))
-    mutate(f, Pos(1856, 1515))
+//    mutate(f, Pos(1823, 1093))
+//    mutate(f, Pos(606, 1201))
+//    mutate(f, Pos(1767, 351))
+//    mutate(f, Pos(1856, 1515))
 
 
     //    mutate(f, rect._1)
