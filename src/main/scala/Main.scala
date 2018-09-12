@@ -262,6 +262,9 @@ object Handler {
   }
 
 
+  case class TTT(before: AngleDist, after: AngleDist)
+  case class AngleDist(angle: Double, dist: Double)
+
   def selectItem(f: BufferedImage) = {
     assert(f.getWidth == size)
     assert(f.getHeight == size)
@@ -278,18 +281,25 @@ object Handler {
       (angle, beamLength(img, rr._3, c))
     }
 
-//    val double: Array[(Double, Double)] = (res ++ res).toArray
-    val double: Array[(Double, Double)] = (res).toArray
+    val double: Array[(Double, Double)] = (res ++ res).toArray
+//    val double: Array[(Double, Double)] = (res).toArray
 
-    val rrr = scala.collection.mutable.Stack[(Double, Double)]()
+    val rrr = scala.collection.mutable.ArrayBuffer[TTT]()
 
     for (i <- 10 to double.size - 10) {
 //      if (double(i)._2 > double(i + 1)._2 / 0.8 || double(i)._2 < double(i + 1)._2 * 0.8) {
-      if (double(i)._2 < double(i + 1)._2 * 0.8) {
-        rrr.push(double(i))
-        rrr.push(double(i + 1))
+      if (double(i)._2 > double(i + 1)._2 / 0.8) {
+        rrr.append(TTT(AngleDist(double(i)._1, double(i)._2), AngleDist(double(i + 1)._1, double(i + 1)._2)))
       }
     }
+
+
+
+    for (i <- 0 to rrr.size - 2) {
+      println(rrr(i).before.angle)
+    }
+
+
 
     println(rrr)
     println(rrr.size)
