@@ -6,10 +6,11 @@ import java.io.File
 import javax.imageio.ImageIO
 import main.Handler._
 
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import scala.reflect.ClassTag
 import MathUtils._
 import IteratorUtils._
+
 import scala.util.Random
 
 case class Color(r: Int, g: Int, b: Int) {}
@@ -271,22 +272,35 @@ object Handler {
 
     val steps = 720
 
-    val res: Seq[Double] = for (rad <- 0 until steps) yield {
+    val res: immutable.IndexedSeq[(Double, Double)] = for (rad <- 0 until steps) yield {
       val angle = 2 * Math.PI * rad / steps
       val c = Coor(Math.sin(angle), Math.cos(angle))
-      inside(img, rr._3, c)
+      (angle, beamLength(img, rr._3, c))
     }
 
-    println(res)
+    val double: Array[(Double, Double)] = (res ++ res).toArray
+
+    val rrr = scala.collection.mutable.Stack[(Double, Double)]()
+
+    for (i <- 10 to double.size - 10) {
+      if (double(i)._2 > double(i + 1)._2 / 0.8 || double(i)._2 < double(i + 1)._2 * 0.8) {
+        rrr.push(double(i))
+        rrr.push(double(i + 1))
+      }
+    }
+
+    println(rrr)
+
+//    println(res)
 
     rr
   }
 
-  def inside(f: Image[Boolean], start: Pos, beam: Coor): Double = {
+  def beamLength(f: Image[Boolean], start: Pos, beam: Coor): Double = {
     val st = Coor(start.x, start.y)
     val last = Iterator.iterate(st)(x => x + beam).takeWhile(x => f(x.toPos)).last
-    println(last)
-    println(st)
+//    println(last)
+//    println(st)
     Coor.distance(st, last)
   }
 }
