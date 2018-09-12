@@ -278,18 +278,21 @@ object Handler {
       (angle, beamLength(img, rr._3, c))
     }
 
-    val double: Array[(Double, Double)] = (res ++ res).toArray
+//    val double: Array[(Double, Double)] = (res ++ res).toArray
+    val double: Array[(Double, Double)] = (res).toArray
 
     val rrr = scala.collection.mutable.Stack[(Double, Double)]()
 
     for (i <- 10 to double.size - 10) {
-      if (double(i)._2 > double(i + 1)._2 / 0.8 || double(i)._2 < double(i + 1)._2 * 0.8) {
+//      if (double(i)._2 > double(i + 1)._2 / 0.8 || double(i)._2 < double(i + 1)._2 * 0.8) {
+      if (double(i)._2 < double(i + 1)._2 * 0.8) {
         rrr.push(double(i))
         rrr.push(double(i + 1))
       }
     }
 
     println(rrr)
+    println(rrr.size)
 
 //    println(res)
 
