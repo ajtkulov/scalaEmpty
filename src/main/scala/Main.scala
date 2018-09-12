@@ -265,6 +265,21 @@ object Handler {
   case class TTT(before: AngleDist, after: AngleDist)
   case class AngleDist(angle: Double, dist: Double)
 
+  /**
+    *
+    * @param fst
+    * @param snd snd should be > fst
+    * @return
+    */
+  def angleDiff(fst: Double, snd: Double): Double = {
+    val res = snd - fst
+    if (res < 0) {
+      res + 2 * Math.PI
+    } else {
+      res
+    }
+  }
+
   def selectItem(f: BufferedImage) = {
     assert(f.getWidth == size)
     assert(f.getHeight == size)
@@ -296,7 +311,9 @@ object Handler {
 
 
     for (i <- 0 to rrr.size - 2) {
-      println(rrr(i).before.angle)
+      if (angleDiff(rrr(i).before.angle, rrr(i + 1).before.angle) < 1.2) {
+
+      }
     }
 
 
