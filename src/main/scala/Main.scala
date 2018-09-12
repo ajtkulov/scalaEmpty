@@ -8,15 +8,21 @@ import main.Handler._
 
 import scala.collection.mutable
 import scala.reflect.ClassTag
+import MathUtils._
+import IteratorUtils._
+import scala.util.Random
 
 case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    val r = read()
+    val r = read("test.jpg")
+    val res = selectItem(r)
+  }
+
+  def base() = {
+    val r = read("/Users/pavel/down/2.jpg")
     val res = selectBasement(r)
-    println(r)
-    println(res)
 
     ImageIO.write(res, "jpg", new File("test.jpg"))
   }
@@ -24,10 +30,52 @@ object Main extends App {
 
 case class Pos(x: Int, y: Int) {
   def +(other: Pos): Pos = Pos(x + other.x, y + other.y)
+
+  def toCoor = Coor(x, y)
+}
+
+object IteratorUtils {
+
+  implicit class Last[T](val iter: Iterator[T]) {
+    def last = {
+      var x: Option[T] = None
+      while (iter.hasNext) {
+        x = Some(iter.next())
+      }
+
+      x.get
+    }
+  }
+
+}
+
+object MathUtils {
+
+  /**
+    * Implicit class for safe division
+    *
+    * @param dividend dividend
+    * @param t        numeric implicit
+    * @tparam T type
+    */
+  implicit class Divide[T](val dividend: T)(implicit t: Numeric[T]) {
+    // scalastyle:off
+    def /#(divider: T): Double = {
+      // scalastyle:on
+      if (t.compare(divider, t.zero) == 0) {
+        0
+      } else {
+        t.toDouble(dividend) / t.toDouble(divider)
+      }
+    }
+  }
+
 }
 
 class Image[C](values: Array[Array[C]]) {
   def apply(x: Int) = values(x)
+
+  def apply(pos: Pos): C = values(pos.x)(pos.y)
 
   def width: Int = values.length
 
@@ -62,13 +110,15 @@ class Image[C](values: Array[Array[C]]) {
 
   lazy val shifts = List[Pos](Pos(1, 0), Pos(0, 1), Pos(-1, 0), Pos(0, -1))
 
-  def bfs(pos: Pos, f: C => Boolean): (Int, Rect) = {
+  def bfs(pos: Pos, f: C => Boolean): (Int, Rect, Pos) = {
     val set = mutable.Set[Pos]()
     var size = 0
     var br: Pos = Pos(Int.MaxValue, Int.MaxValue)
     var rb: Pos = Pos(0, 0)
     var tl: Pos = Pos(0, 0)
     var lt: Pos = Pos(Int.MaxValue, Int.MaxValue)
+    var sx = 0
+    var sy = 0
 
     val q = mutable.Queue[Pos]()
     set.add(pos)
@@ -87,11 +137,13 @@ class Image[C](values: Array[Array[C]]) {
           if (n.y < br.y || (n.y == br.y && n.x > br.x)) br = n
           if (n.x < lt.x || (n.x == lt.x && n.y > lt.y)) lt = n
           if (n.x > rb.x || (n.x == rb.x && n.y < rb.y)) rb = n
+          sx = sx + n.x
+          sy = sy + n.y
         }
       }
     }
 
-    (size, (br, rb, tl, lt))
+    (size, (br, rb, tl, lt), Pos((sx /# size).toInt, (sy /# size).toInt))
   }
 }
 
@@ -100,6 +152,8 @@ case class ColorImage(array: Array[Array[Color]]) extends Image[Color](array)
 object Handler {
   type ColorImage = Image[Color]
   type Rect = (Pos, Pos, Pos, Pos)
+  val size = 1024
+
 
   implicit class ImplicitImage(f: BufferedImage) {
     def getColor(x: Int, y: Int): Color = {
@@ -116,8 +170,8 @@ object Handler {
     }
   }
 
-  def read(): BufferedImage = {
-    ImageIO.read(new java.io.File("/Users/pavel/down/2.jpg"))
+  def read(file: String): BufferedImage = {
+    ImageIO.read(new java.io.File(file))
   }
 
   def rgb(c: Int): Color = {
@@ -128,11 +182,14 @@ object Handler {
   }
 
   def isGreen(color: Color): Boolean = {
-    (color.g > color.r * 1.6)
+    color.g > color.r * 1.6
+  }
+
+  def isEmpty(color: Color): Boolean = {
+    color.g == 0 && color.b == 0 && color.r == 0
   }
 
   def affine(f: BufferedImage, rect: Rect): BufferedImage = {
-    val size = 1024
     val img = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB)
 
     val p1 = rect._1
@@ -144,7 +201,6 @@ object Handler {
       x <- 0 until size
       y <- 0 until size
     } {
-      //      try {
       val x1 = Coor(p1.x + x.toDouble / size * (p2.x - p1.x), p1.y + x.toDouble / size * (p2.y - p1.y))
       val x2 = Coor(l1.x + x.toDouble / size * (l2.x - l1.x), l1.y + x.toDouble / size * (l2.y - l1.y))
 
@@ -161,24 +217,13 @@ object Handler {
     img
   }
 
-
   def mutateAll(f: BufferedImage, rect: Rect) = {
-        for {
-          x <- 0 until  f.getWidth
-          y <- 0 until  f.getHeight
-          if isGreen(f.getColor(x, y))
-        } f.setRGB(x, y, 0)
+    for {
+      x <- 0 until f.getWidth
+      y <- 0 until f.getHeight
+      if isGreen(f.getColor(x, y))
+    } f.setRGB(x, y, 0)
 
-//    mutate(f, Pos(1823, 1093))
-//    mutate(f, Pos(606, 1201))
-//    mutate(f, Pos(1767, 351))
-//    mutate(f, Pos(1856, 1515))
-
-
-    //    mutate(f, rect._1)
-    //    mutate(f, rect._2)
-    //    mutate(f, rect._3)
-    //    mutate(f, rect._4)
     ImageIO.write(f, "jpg", new File("output.jpg"))
   }
 
@@ -190,6 +235,16 @@ object Handler {
 
   }
 
+  def replaceBase(f: BufferedImage) = {
+    for {
+      x <- 0 until f.getWidth
+      y <- 0 until f.getHeight
+      if isGreen(f.getColor(x, y))
+    } f.setRGB(x, y, 0)
+
+    f
+  }
+
   def selectBasement(f: BufferedImage) = {
     val img = ColorImage(f.getColors)
 
@@ -197,20 +252,62 @@ object Handler {
 
     val center = bool.center(identity)
 
-    val rr = Iterator.from(0).map(x => bool.bfs(center + Pos(x, x), identity)).filter { case (a, _) => a > 100 }.take(1).toList.head
+    val rr = Iterator.from(0).map(x => bool.bfs(center + Pos(x, x), identity)).filter { case (a, _, _) => a > 100 }.take(1).toList.head
 
-//    mutateAll(f, rr._2)
+    val aff = affine(f, rr._2)
+    val res = replaceBase(aff)
 
-    affine(f, rr._2)
+    res
   }
 
+
+  def selectItem(f: BufferedImage) = {
+    assert(f.getWidth == size)
+    assert(f.getHeight == size)
+
+    val img: Image[Boolean] = ColorImage(f.getColors).map(x => !isEmpty(x))
+    val rand = new Random(1)
+    val rr = Iterator.continually(1).map(x => Pos(rand.nextInt(size), rand.nextInt(size))).map(x => img.bfs(x, identity)).filter { case (a, _, _) => a > 1000 }.take(1).toList.head
+
+    val steps = 720
+
+    val res: Seq[Double] = for (rad <- 0 until steps) yield {
+      val angle = 2 * Math.PI * rad / steps
+      val c = Coor(Math.sin(angle), Math.cos(angle))
+      inside(img, rr._3, c)
+    }
+
+    println(res)
+
+    rr
+  }
+
+  def inside(f: Image[Boolean], start: Pos, beam: Coor): Double = {
+    val st = Coor(start.x, start.y)
+    val last = Iterator.iterate(st)(x => x + beam).takeWhile(x => f(x.toPos)).last
+    println(last)
+    println(st)
+    Coor.distance(st, last)
+  }
 }
 
-case class Coor(x: BigDecimal, y: BigDecimal) {
+case class Coor(x: Double, y: Double) {
   def -->(dest: Coor): Coor = {
     Coor(dest.x - x, dest.y - y)
   }
 
+  def +(shift: Coor): Coor = {
+    Coor(x + shift.x, y + shift.y)
+  }
+
+  def toPos = Pos(Math.round(x.toDouble).toInt, Math.round(y.toDouble).toInt)
+}
+
+object Coor {
+  def distance(a: Coor, b: Coor): Double = {
+    val sq = (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y)
+    Math.sqrt(sq)
+  }
 }
 
 object Geom {
@@ -225,5 +322,4 @@ object Geom {
       ((p1.x * p2.y - p1.y * p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x * p4.y - p3.y * p4.x)) / d
     )
   }
-
 }
