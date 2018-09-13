@@ -18,14 +18,24 @@ case class Color(r: Int, g: Int, b: Int) {}
 object Main extends App {
   override def main(args: Array[String]): Unit = {
     val r = read("test.jpg")
-    val res = selectItem(r)
+    val res: mutable.Seq[Coor] = selectItem(r)
+    res.foreach(x => mutate(r, x.toPos))
+//    mutate(r, Pos(648, 228))
+//    mutate(r, Pos(235, 506))
+    //    mutate(r, Pos(692, 354))
+    //    mutate(r, Pos(232, 505))
+    //    mutate(r, Pos(530, 593))
+    //    mutate(r, Pos(351, 143))
+    //    mutate(r, Pos(363 + 10, 466 + 10))
+    ImageIO.write(r, "png", new File("1234.jpg"))
+    //    base()
   }
 
   def base() = {
     val r = read("/Users/pavel/down/2.jpg")
     val res = selectBasement(r)
 
-    ImageIO.write(res, "jpg", new File("test.jpg"))
+    ImageIO.write(res, "png", new File("test.jpg"))
   }
 }
 
@@ -232,7 +242,7 @@ object Handler {
     for {
       x <- 0 to 10
       y <- 0 to 10
-    } f.setRGB(pos.x + x, pos.y + y, 0)
+    } f.setRGB(pos.x + x, pos.y + y, 123123123)
 
   }
 
@@ -263,7 +273,8 @@ object Handler {
 
 
   case class TTT(before: AngleDist, after: AngleDist)
-  case class AngleDist(angle: Double, dist: Double)
+
+  case class AngleDist(angle: Double, dist: Double, coor: Coor)
 
   /**
     *
@@ -280,58 +291,97 @@ object Handler {
     }
   }
 
+  def anglePlus(angle: Double, diff: Double): Double = {
+    val res = angle + diff
+    if (res > 2 * Math.PI) {
+      res - 2 * Math.PI
+    } else {
+      res
+    }
+  }
+
   def selectItem(f: BufferedImage) = {
     assert(f.getWidth == size)
     assert(f.getHeight == size)
 
     val img: Image[Boolean] = ColorImage(f.getColors).map(x => !isEmpty(x))
     val rand = new Random(1)
-    val rr = Iterator.continually(1).map(x => Pos(rand.nextInt(size), rand.nextInt(size))).map(x => img.bfs(x, identity)).filter { case (a, _, _) => a > 1000 }.take(1).toList.head
+    val last = Iterator.continually(1).map(x => Pos(rand.nextInt(size), rand.nextInt(size))).map(x => img.bfs(x, identity)).filter { case (a, _, _) => a > 1000 }.take(1).toList.head
 
     val steps = 720
 
-    val res: immutable.IndexedSeq[(Double, Double)] = for (rad <- 0 until steps) yield {
+    val beams: immutable.IndexedSeq[(Double, (Double, Coor))] = for (rad <- 0 until steps) yield {
       val angle = 2 * Math.PI * rad / steps
-      val c = Coor(Math.sin(angle), Math.cos(angle))
-      (angle, beamLength(img, rr._3, c))
+      (angle, beamLength(img, last._3, angle))
     }
 
-    val double: Array[(Double, Double)] = (res ++ res).toArray
-//    val double: Array[(Double, Double)] = (res).toArray
+    val double: Array[(Double, (Double, Coor))] = (beams ++ beams).toArray
 
-    val rrr = scala.collection.mutable.ArrayBuffer[TTT]()
+    val buf = scala.collection.mutable.ArrayBuffer[TTT]()
+
+    val res = scala.collection.mutable.ArrayBuffer[Coor]()
+    val st = 100
+    val eps = 0.1
 
     for (i <- 10 to double.size - 10) {
-//      if (double(i)._2 > double(i + 1)._2 / 0.8 || double(i)._2 < double(i + 1)._2 * 0.8) {
-      if (double(i)._2 > double(i + 1)._2 / 0.8) {
-        rrr.append(TTT(AngleDist(double(i)._1, double(i)._2), AngleDist(double(i + 1)._1, double(i + 1)._2)))
+      if (double(i)._2._1 < double(i + 1)._2._1 * 0.8) {
+        buf.append(TTT(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
       }
     }
 
+    for (i <- 0 to buf.size - 2) {
+      if (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) < 1.4) {
+        val startAngle = buf(i).before.angle + eps
+        val diff = (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) - 2 * eps) / st
+        val d = (0 to st).map { idx =>
+          beamLength(img, last._3, anglePlus(startAngle, diff * idx))
+        }.maxBy(_._1)
 
-
-    for (i <- 0 to rrr.size - 2) {
-      if (angleDiff(rrr(i).before.angle, rrr(i + 1).before.angle) < 1.2) {
-
+        res.append(d._2)
       }
     }
 
+    buf.clear()
+    for (i <- 10 to double.size - 10) {
+      if (double(i)._2._1 > double(i + 1)._2._1 / 0.8) {
+        buf.append(TTT(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
+      }
+    }
 
+    for (i <- 0 to buf.size - 2) {
+      if (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) < 1.4) {
+        val startAngle = buf(i).before.angle + eps
+        val diff = (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) - 2 * eps) / st
+        val d = (0 to st).map { idx =>
+          beamLength(img, last._3, anglePlus(startAngle, diff * idx))
+        }.maxBy(_._1)
 
-    println(rrr)
-    println(rrr.size)
+        res.append(d._2)
+      }
+    }
 
-//    println(res)
-
-    rr
+    res
   }
 
-  def beamLength(f: Image[Boolean], start: Pos, beam: Coor): Double = {
+  def beamLength(f: Image[Boolean], start: Pos, angle: Double): (Double, Coor) = {
+    val beam = Coor(Math.sin(angle), Math.cos(angle))
     val st = Coor(start.x, start.y)
-    val last = Iterator.iterate(st)(x => x + beam).takeWhile(x => f(x.toPos)).last
-//    println(last)
-//    println(st)
-    Coor.distance(st, last)
+    val last = Iterator.iterate(st)(x => x + beam).takeWhile(x => inside(f, x.toPos)).last
+    (Coor.distance(st, last), last)
+  }
+
+  def inside(f: Image[Boolean], pos: Pos): Boolean = {
+    var c = 0
+    for {
+      x <- pos.x - 2 to pos.x + 2
+      y <- pos.y - 2 to pos.y + 2
+    } {
+      if (f(x)(y)) {
+        c = c + 1
+      }
+    }
+
+    c > 0
   }
 }
 
