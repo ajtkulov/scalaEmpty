@@ -18,8 +18,12 @@ case class Color(r: Int, g: Int, b: Int) {}
 object Main extends App {
   override def main(args: Array[String]): Unit = {
     val r = read("test.jpg")
-    val res: mutable.Seq[Coor] = selectItem(r)
-    res.foreach(x => mutate(r, x.toPos))
+
+    val ff = rotate(r, Pos(0, 0), Pos(5, 100), Pos(438,366))
+
+    val res: Item = selectItem(r)
+    println(res)
+//    res.edgePoints.foreach(x => mutate(r, x))
 //    mutate(r, Pos(648, 228))
 //    mutate(r, Pos(235, 506))
     //    mutate(r, Pos(692, 354))
@@ -38,6 +42,8 @@ object Main extends App {
     ImageIO.write(res, "png", new File("test.jpg"))
   }
 }
+
+case class Item(center: Pos, r: Rect, edgePoints: List[Pos])
 
 case class Pos(x: Int, y: Int) {
   def +(other: Pos): Pos = Pos(x + other.x, y + other.y)
@@ -178,6 +184,10 @@ object Handler {
         y <- 0 until f.getHeight
       } a(x)(y) = getColor(x, y)
       a
+    }
+
+    def isInside(pos: Pos): Boolean = {
+      pos.x >=0 && pos.y >= 0 && pos.x < f.getWidth && pos.y < f.getHeight
     }
   }
 
@@ -360,7 +370,7 @@ object Handler {
       }
     }
 
-    res
+    Item(last._3, last._2, res.toList.map(_.toPos))
   }
 
   def beamLength(f: Image[Boolean], start: Pos, angle: Double): (Double, Coor) = {
@@ -383,6 +393,24 @@ object Handler {
 
     c > 0
   }
+
+  def rotate(f: BufferedImage, fst: Pos, snd: Pos, center: Pos = Pos(0, 0)): BufferedImage = {
+    val angle = Math.atan2(snd.x - fst.x, snd.y - fst.y)
+
+    val ff = new BufferedImage(f.getWidth, f.getHeight, BufferedImage.TYPE_INT_RGB)
+
+    for {
+      x <- 0 until f.getWidth
+      y <- 0 until f.getHeight
+    } {
+      val pos = ((Coor(x, y) - center.toCoor).rotate(angle) + center.toCoor).toPos
+      if (f.isInside(pos)) {
+        ff.setRGB(x, y, f.getRGB(pos.x, pos.y))
+      }
+    }
+
+    ff
+  }
 }
 
 case class Coor(x: Double, y: Double) {
@@ -392,6 +420,16 @@ case class Coor(x: Double, y: Double) {
 
   def +(shift: Coor): Coor = {
     Coor(x + shift.x, y + shift.y)
+  }
+
+  def -(shift: Coor): Coor = {
+    Coor(x - shift.x, y - shift.y)
+  }
+
+  def rotate(angle: Double): Coor = {
+    val c = Math.cos(angle)
+    val s = Math.sin(angle)
+    Coor(x * c - y * s, x * s  + y * c)
   }
 
   def toPos = Pos(Math.round(x.toDouble).toInt, Math.round(y.toDouble).toInt)
