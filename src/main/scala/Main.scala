@@ -11,6 +11,7 @@ import scala.reflect.ClassTag
 import MathUtils._
 import IteratorUtils._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
 
 case class Color(r: Int, g: Int, b: Int) {}
@@ -19,20 +20,15 @@ object Main extends App {
   override def main(args: Array[String]): Unit = {
     val r = read("test.jpg")
 
-    val ff = rotate(r, Pos(0, 0), Pos(5, 100), Pos(438,366))
-
     val res: Item = selectItem(r)
-    println(res)
-//    res.edgePoints.foreach(x => mutate(r, x))
-//    mutate(r, Pos(648, 228))
-//    mutate(r, Pos(235, 506))
-    //    mutate(r, Pos(692, 354))
-    //    mutate(r, Pos(232, 505))
-    //    mutate(r, Pos(530, 593))
-    //    mutate(r, Pos(351, 143))
-    //    mutate(r, Pos(363 + 10, 466 + 10))
-    ImageIO.write(r, "png", new File("1234.jpg"))
-    //    base()
+
+    for {
+      idx <- res.lines.indices
+    } {
+      val (fst, snd) = res.lines(idx)
+      val fff = rotate(r, rotationAngle(fst, snd), res.center)
+      ImageIO.write(fff, "png", new File(s"rotate${idx}.jpg"))
+    }
   }
 
   def base() = {
@@ -43,12 +39,61 @@ object Main extends App {
   }
 }
 
-case class Item(center: Pos, r: Rect, edgePoints: List[Pos])
+case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) {
+  lazy val bools: Image[Boolean] = ColorImage(f.getColors).map(x => nonEmpty(x))
+
+  def lines: List[(Pos, Pos)] = {
+    val res = ArrayBuffer[(Pos, Pos)]()
+
+    for {
+      i <- edgePoints.indices
+      j <- edgePoints.indices
+      if i != j
+    } {
+      val ff = edgePoints(i)
+      val ss = edgePoints(j)
+      val line = Line(ff.toCoor, ss.toCoor)
+      if (interLine(line)) {
+        res.append((ff, ss))
+      }
+    }
+
+    res.toList
+  }
+
+  def interLine(line: Line): Boolean = {
+    var cnt: Int = 0
+    var sign: Int = 0
+
+    for {
+      x <- 0 until bools.width
+      y <- 0 until bools.height
+    } {
+
+      val pos = Pos(x, y)
+      if (bools(pos)) {
+        cnt = cnt + 1
+        if (line(pos.toCoor) < 0) {
+          sign = sign + 1
+        }
+      }
+    }
+    sign * 6 < cnt
+  }
+}
+
+object Item {
+  def create(f: BufferedImage, center: Pos, edgePoints: List[Pos]): Item = new Item(f, center, edgePoints.distinct)
+}
 
 case class Pos(x: Int, y: Int) {
   def +(other: Pos): Pos = Pos(x + other.x, y + other.y)
 
   def toCoor = Coor(x, y)
+
+  def rotate(center: Pos, angle: Double) = {
+    ((Coor(x, y) - center.toCoor).rotate(angle) + center.toCoor).toPos
+  }
 }
 
 object IteratorUtils {
@@ -97,6 +142,8 @@ class Image[C](values: Array[Array[C]]) {
   def width: Int = values.length
 
   def height: Int = values(0).length
+
+  lazy val size = height * width
 
   def map[T: ClassTag](f: C => T): Image[T] = {
     val ar = Array.ofDim[T](width, height)
@@ -171,7 +218,6 @@ object Handler {
   type Rect = (Pos, Pos, Pos, Pos)
   val size = 1024
 
-
   implicit class ImplicitImage(f: BufferedImage) {
     def getColor(x: Int, y: Int): Color = {
       rgb(f.getRGB(x, y))
@@ -187,7 +233,7 @@ object Handler {
     }
 
     def isInside(pos: Pos): Boolean = {
-      pos.x >=0 && pos.y >= 0 && pos.x < f.getWidth && pos.y < f.getHeight
+      pos.x >= 0 && pos.y >= 0 && pos.x < f.getWidth && pos.y < f.getHeight
     }
   }
 
@@ -208,6 +254,10 @@ object Handler {
 
   def isEmpty(color: Color): Boolean = {
     color.g == 0 && color.b == 0 && color.r == 0
+  }
+
+  def nonEmpty(color: Color): Boolean = {
+    color.g > 0 || color.b > 0 || color.r > 0
   }
 
   def affine(f: BufferedImage, rect: Rect): BufferedImage = {
@@ -370,7 +420,7 @@ object Handler {
       }
     }
 
-    Item(last._3, last._2, res.toList.map(_.toPos))
+    Item.create(f, last._3, res.toList.map(_.toPos))
   }
 
   def beamLength(f: Image[Boolean], start: Pos, angle: Double): (Double, Coor) = {
@@ -394,16 +444,18 @@ object Handler {
     c > 0
   }
 
-  def rotate(f: BufferedImage, fst: Pos, snd: Pos, center: Pos = Pos(0, 0)): BufferedImage = {
-    val angle = Math.atan2(snd.x - fst.x, snd.y - fst.y)
+  def rotationAngle(fst: Pos, snd: Pos): Double = {
+    Math.atan2(snd.y - fst.y, snd.x - fst.x)
+  }
 
+  def rotate(f: BufferedImage, angle: Double, center: Pos): BufferedImage = {
     val ff = new BufferedImage(f.getWidth, f.getHeight, BufferedImage.TYPE_INT_RGB)
 
     for {
       x <- 0 until f.getWidth
       y <- 0 until f.getHeight
     } {
-      val pos = ((Coor(x, y) - center.toCoor).rotate(angle) + center.toCoor).toPos
+      val pos = Pos(x, y).rotate(center, angle)
       if (f.isInside(pos)) {
         ff.setRGB(x, y, f.getRGB(pos.x, pos.y))
       }
@@ -429,10 +481,22 @@ case class Coor(x: Double, y: Double) {
   def rotate(angle: Double): Coor = {
     val c = Math.cos(angle)
     val s = Math.sin(angle)
-    Coor(x * c - y * s, x * s  + y * c)
+    Coor(x * c - y * s, x * s + y * c)
   }
 
   def toPos = Pos(Math.round(x.toDouble).toInt, Math.round(y.toDouble).toInt)
+}
+
+case class Line(a: Double, b: Double, c: Double) {
+  def apply(coor: Coor): Double = {
+    a * coor.x + b * coor.y + c
+  }
+}
+
+object Line {
+  def apply(fst: Coor, snd: Coor): Line = {
+    Line(fst.y - snd.y, snd.x - fst.x, fst.x * snd.y - snd.x * fst.y)
+  }
 }
 
 object Coor {
