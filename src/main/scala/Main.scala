@@ -32,6 +32,7 @@ object Main extends App {
 
     //    base("/Users/pavel/down/2.jpg", "test2.jpg")
     //    base("/Users/pavel/down/3.jpg", "test3.jpg")
+    //    base("/Users/pavel/down/4.jpg", "test4.jpg")
   }
 
   def base(input: String, output: String) = {
@@ -167,6 +168,18 @@ class Image[C](values: Array[Array[C]]) {
   def apply(x: Int) = values(x)
 
   def apply(pos: Pos): C = values(pos.x)(pos.y)
+
+  def getOrElse(pos: Pos, default: C): C = {
+    if (inside(pos)) {
+      values(pos.x)(pos.y)
+    } else {
+      default
+    }
+  }
+
+  def inside(pos: Pos): Boolean = {
+    pos.x >= 0 && pos.x < width && pos.y >= 0 && pos.y < height
+  }
 
   def width: Int = values.length
 
@@ -353,7 +366,7 @@ object Handler {
     val center = bool.center(identity)
 
 
-    var rad = List(center.x, center.y, f.getWidth - center.x, f.getHeight - center.y).min - 100
+    var rad = 2000
     val buffer = ArrayBuffer[Pos]()
 
 
@@ -364,7 +377,7 @@ object Handler {
 
         val dot = center + Coor(Math.cos(angle) * rad, Math.sin(angle) * rad).toPos
 
-        if (bool(dot) && buffer.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > 400)) {
+        if (bool.getOrElse(dot, false) && buffer.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > 400)) {
           buffer.append(dot)
         }
       }
