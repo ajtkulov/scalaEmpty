@@ -29,29 +29,35 @@ object Main extends App {
       val fff = rotate(r, rotationAngle(fst, snd), res.center)
       ImageIO.write(fff, "png", new File(s"rotate${idx}.jpg"))
     }
+
+    //    base("/Users/pavel/down/2.jpg", "test2.jpg")
+    //    base("/Users/pavel/down/3.jpg", "test3.jpg")
   }
 
-  def base() = {
-    val r = read("/Users/pavel/down/2.jpg")
+  def base(input: String, output: String) = {
+    val r = read(input)
+
     val res = selectBasement(r)
 
-    ImageIO.write(res, "png", new File("test.jpg"))
+    ImageIO.write(res, "png", new File(output))
   }
 }
 
-case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) {
-  lazy val bools: Image[Boolean] = ColorImage(f.getColors).map(x => nonEmpty(x))
+trait LineOrder {
+  def bools: Image[Boolean]
+
+  def unorderedPoints: List[Pos]
 
   def lines: List[(Pos, Pos)] = {
     val res = ArrayBuffer[(Pos, Pos)]()
 
     for {
-      i <- edgePoints.indices
-      j <- edgePoints.indices
+      i <- unorderedPoints.indices
+      j <- unorderedPoints.indices
       if i != j
     } {
-      val ff = edgePoints(i)
-      val ss = edgePoints(j)
+      val ff = unorderedPoints(i)
+      val ss = unorderedPoints(j)
       val line = Line(ff.toCoor, ss.toCoor)
       if (interLine(line)) {
         res.append((ff, ss))
@@ -80,7 +86,30 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) {
     }
     sign * 6 < cnt
   }
+
+  def order: List[Pos] = {
+    val line = lines
+
+    val stack = scala.collection.mutable.Stack[Pos]()
+    val init = line.head._1
+
+    stack.push(init)
+    while (stack.size < line.size) {
+      stack.push(lines.find { case (a, _) => a == stack.top }.get._2)
+    }
+
+    stack.toList
+  }
+
 }
+
+case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends LineOrder {
+  lazy val bools: Image[Boolean] = ColorImage(f.getColors).map(x => nonEmpty(x))
+
+  override def unorderedPoints: List[Pos] = edgePoints
+}
+
+case class Basement(bools: Image[Boolean], unorderedPoints: List[Pos]) extends LineOrder {}
 
 object Item {
   def create(f: BufferedImage, center: Pos, edgePoints: List[Pos]): Item = new Item(f, center, edgePoints.distinct)
@@ -260,13 +289,13 @@ object Handler {
     color.g > 0 || color.b > 0 || color.r > 0
   }
 
-  def affine(f: BufferedImage, rect: Rect): BufferedImage = {
+  def affine(f: BufferedImage, rect: List[Pos]): BufferedImage = {
     val img = new BufferedImage(size, size, BufferedImage.TYPE_INT_RGB)
 
-    val p1 = rect._1
-    val p2 = rect._2
-    val l1 = rect._4
-    val l2 = rect._3
+    val p1 = rect(0)
+    val p2 = rect(1)
+    val l1 = rect(3)
+    val l2 = rect(2)
 
     for {
       x <- 0 until size
@@ -280,7 +309,7 @@ object Handler {
 
       val inter = Geom.intersect(x1, x2, y1, y2)
 
-      val dot = Pos(Math.round(inter.x.toDouble).toInt, Math.round(inter.y.toDouble).toInt)
+      val dot = Pos(Math.round(inter.x).toInt, Math.round(inter.y).toInt)
       val color = f.getRGB(dot.x, dot.y)
       img.setRGB(x, y, color)
     }
@@ -323,16 +352,34 @@ object Handler {
 
     val center = bool.center(identity)
 
-    val rr = Iterator.from(0).map(x => bool.bfs(center + Pos(x, x), identity)).filter { case (a, _, _) => a > 100 }.take(1).toList.head
 
-    val aff = affine(f, rr._2)
+    var rad = List(center.x, center.y, f.getWidth - center.x, f.getHeight - center.y).min - 100
+    val buffer = ArrayBuffer[Pos]()
+
+
+    val steps = 720
+    while (rad > 100 && buffer.size < 4) {
+      for (rr <- 0 until steps) yield {
+        val angle = 2 * Math.PI * rr / steps
+
+        val dot = center + Coor(Math.cos(angle) * rad, Math.sin(angle) * rad).toPos
+
+        if (bool(dot) && buffer.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > 400)) {
+          buffer.append(dot)
+        }
+      }
+
+      rad = rad - 1
+    }
+
+    val base = Basement(bool, buffer.toList)
+    val aff = affine(f, base.order)
     val res = replaceBase(aff)
 
     res
   }
 
-
-  case class TTT(before: AngleDist, after: AngleDist)
+  case class Jump(before: AngleDist, after: AngleDist)
 
   case class AngleDist(angle: Double, dist: Double, coor: Coor)
 
@@ -377,7 +424,7 @@ object Handler {
 
     val double: Array[(Double, (Double, Coor))] = (beams ++ beams).toArray
 
-    val buf = scala.collection.mutable.ArrayBuffer[TTT]()
+    val buf = scala.collection.mutable.ArrayBuffer[Jump]()
 
     val res = scala.collection.mutable.ArrayBuffer[Coor]()
     val st = 100
@@ -385,7 +432,7 @@ object Handler {
 
     for (i <- 10 to double.size - 10) {
       if (double(i)._2._1 < double(i + 1)._2._1 * 0.8) {
-        buf.append(TTT(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
+        buf.append(Jump(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
       }
     }
 
@@ -404,7 +451,7 @@ object Handler {
     buf.clear()
     for (i <- 10 to double.size - 10) {
       if (double(i)._2._1 > double(i + 1)._2._1 / 0.8) {
-        buf.append(TTT(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
+        buf.append(Jump(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
       }
     }
 
