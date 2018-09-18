@@ -79,11 +79,27 @@ object Matcher {
 
       shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
       val err = shift(sndRotated, out, nline2.snd.toPos, Pos(1024, 1024))
-      println(err)
+      println(s"intersect: $err")
+      println(s"space: ${errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)}")
 
       ImageIO.write(out, "png", new File(s"${suff}${mm}.jpg"))
       mm = mm + 1
     }
+  }
+
+  def errorSpace(f: BufferedImage, width: Int): Int = {
+    var err = 0
+    for {
+      x <- 1024 + 15 to 1024 + width - 15
+      y <- 1024 - 110 to 1024 + 110
+    } {
+      if (isEmpty(f.getColor(x, y))) {
+        f.setRGB(x, y, 0x004400)
+        err = err + 1
+      }
+    }
+
+    err
   }
 
   def shift(source: BufferedImage, dest: BufferedImage, sourcePos: Pos, destPos: Pos): Int = {
@@ -100,7 +116,7 @@ object Matcher {
         if (nonEmpty(dest.getColor(n.x, n.y))) {
           if (nonEmpty(cc)) {
             err = err + 1
-            dest.setRGB(n.x, n.y, 123123)
+            dest.setRGB(n.x, n.y, 0x00ffff)
           }
         } else {
           dest.setRGB(n.x, n.y, c)
