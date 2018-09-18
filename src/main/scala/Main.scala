@@ -13,6 +13,12 @@ import IteratorUtils._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Random
+import io.circe.syntax._
+import io.circe._
+import io.circe.{Decoder, Encoder}
+import io.circe.generic.semiauto._
+import io.circe.generic.auto._
+import ItemStored._
 
 case class Color(r: Int, g: Int, b: Int) {}
 
@@ -39,8 +45,11 @@ object Main extends App {
     val r = read(input)
 
     val res = selectBasement(r)
+    val item: Item = selectItem(res)
+    val res1 = normalize(item)
 
-    ImageIO.write(res, "png", new File(output))
+    ImageIO.write(res1, "png", new File(output))
+    FileUtils.write(s"$output.meta", item.to.asJson.noSpaces)
   }
 }
 
@@ -108,12 +117,24 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends Li
   lazy val bools: Image[Boolean] = ColorImage(f.getColors).map(x => nonEmpty(x))
 
   override def unorderedPoints: List[Pos] = edgePoints
+
+  def to: ItemStored = ItemStored(center, edgePoints)
+}
+
+case class ItemStored(center: Pos, edgePoints: List[Pos]) {}
+
+object ItemStored {
+  implicit val encoder: Encoder[ItemStored] = deriveEncoder
+  implicit val decoder: Decoder[ItemStored] = deriveDecoder
 }
 
 case class Basement(bools: Image[Boolean], unorderedPoints: List[Pos]) extends LineOrder {}
 
 object Item {
-  def create(f: BufferedImage, center: Pos, edgePoints: List[Pos]): Item = new Item(f, center, edgePoints.distinct)
+  def create(f: BufferedImage, center: Pos, edgePoints: List[Pos]): Item = {
+    val tmp = new Item(f, center, edgePoints.distinct)
+    new Item(f, center, tmp.order)
+  }
 }
 
 case class Pos(x: Int, y: Int) {
@@ -216,7 +237,7 @@ class Image[C](values: Array[Array[C]]) {
 
   lazy val shifts = List[Pos](Pos(1, 0), Pos(0, 1), Pos(-1, 0), Pos(0, -1))
 
-  def bfs(pos: Pos, f: C => Boolean): (Int, Rect, Pos) = {
+  def bfs(pos: Pos, f: C => Boolean, sideEffect: Option[Pos => Unit] = None): (Int, Rect, Pos) = {
     val set = mutable.Set[Pos]()
     var size = 0
     var br: Pos = Pos(Int.MaxValue, Int.MaxValue)
@@ -245,6 +266,7 @@ class Image[C](values: Array[Array[C]]) {
           if (n.x > rb.x || (n.x == rb.x && n.y < rb.y)) rb = n
           sx = sx + n.x
           sy = sy + n.y
+          sideEffect.foreach(x => x(n))
         }
       }
     }
@@ -388,6 +410,18 @@ object Handler {
     val base = Basement(bool, buffer.toList)
     val aff = affine(f, base.order)
     val res = replaceBase(aff)
+
+    res
+  }
+
+  def normalize(item: Item): BufferedImage = {
+    val res = new BufferedImage(item.f.getWidth, item.f.getHeight, BufferedImage.TYPE_INT_RGB)
+
+
+    val img = ColorImage(item.f.getColors)
+    img.bfs(item.center, x => nonEmpty(x), Some(pos => {
+      res.setRGB(pos.x, pos.y, item.f.getRGB(pos.x, pos.y))
+    }))
 
     res
   }
