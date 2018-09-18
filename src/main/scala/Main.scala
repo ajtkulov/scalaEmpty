@@ -19,22 +19,20 @@ import io.circe.{Decoder, Encoder}
 import io.circe.generic.semiauto._
 import io.circe.generic.auto._
 import ItemStored._
+import io.circe.parser.decode
+import Matcher._
 
 case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    val r = read("test.jpg")
+    val r2 = readItem("test2.jpg")
+    val r3 = readItem("test3.jpg")
+    val r4 = readItem("test4.jpg")
 
-    val res: Item = selectItem(r)
-
-    for {
-      idx <- res.lines.indices
-    } {
-      val (fst, snd) = res.lines(idx)
-      val fff = rotate(r, rotationAngle(fst, snd), res.center)
-      ImageIO.write(fff, "png", new File(s"rotate${idx}.jpg"))
-    }
+    tryMatch(r2, r3, "ss1-")
+    tryMatch(r2, r4, "ss2-")
+    tryMatch(r3, r4, "ss3-")
 
     //    base("/Users/pavel/down/2.jpg", "test2.jpg")
     //    base("/Users/pavel/down/3.jpg", "test3.jpg")
@@ -50,6 +48,66 @@ object Main extends App {
 
     ImageIO.write(res1, "png", new File(output))
     FileUtils.write(s"$output.meta", item.to.asJson.noSpaces)
+  }
+}
+
+object Matcher {
+  def tryMatch(fst: Item, snd: Item, suff: String) = {
+    var mm = 0
+
+    for {
+      f <- 0 until 4
+      s <- 0 until 4
+      ff = fst.distance(f)
+      ss = snd.distance(s)
+      if Math.abs(ff - ss) / ff < 0.05
+    } {
+      val line1 = fst.line2(f)
+      val line2 = snd.line2(s)
+
+      val r1 = rotationAngle(line1.fst, line1.snd)
+      val fstRotated = rotate(fst.f, r1, fst.center)
+
+      val nline1 = line1.rotate(fst.center, -r1)
+
+      val r2 = rotationAngle(line2.fst, line2.snd) + Math.PI
+      val sndRotated = rotate(snd.f, r2, snd.center)
+
+      val nline2 = line2.rotate(snd.center, -r2)
+
+      val out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
+
+      shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
+      val err = shift(sndRotated, out, nline2.snd.toPos, Pos(1024, 1024))
+      println(err)
+
+      ImageIO.write(out, "png", new File(s"${suff}${mm}.jpg"))
+      mm = mm + 1
+    }
+  }
+
+  def shift(source: BufferedImage, dest: BufferedImage, sourcePos: Pos, destPos: Pos): Int = {
+    var err = 0
+    val delta = destPos - sourcePos
+    for {
+      x <- 0 until source.getWidth
+      y <- 0 until source.getHeight
+    } {
+      val c = source.getRGB(x, y)
+      val cc = source.getColor(x, y)
+      val n = Pos(x, y) + delta
+      if (dest.isInside(n)) {
+        if (nonEmpty(dest.getColor(n.x, n.y))) {
+          if (nonEmpty(cc)) {
+            err = err + 1
+            dest.setRGB(n.x, n.y, 123123)
+          }
+        } else {
+          dest.setRGB(n.x, n.y, c)
+        }
+      }
+    }
+    err
   }
 }
 
@@ -119,6 +177,22 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends Li
   override def unorderedPoints: List[Pos] = edgePoints
 
   def to: ItemStored = ItemStored(center, edgePoints)
+
+  def distance(idx: Int): Double = {
+    if (idx == edgePoints.size - 1) {
+      Coor.distance(edgePoints.last.toCoor, edgePoints.head.toCoor)
+    } else {
+      Coor.distance(edgePoints(idx).toCoor, edgePoints(idx + 1).toCoor)
+    }
+  }
+
+  def line2(idx: Int): Line2 = {
+    if (idx == edgePoints.size - 1) {
+      Line2(edgePoints.last.toCoor, edgePoints.head.toCoor)
+    } else {
+      Line2(edgePoints(idx).toCoor, edgePoints(idx + 1).toCoor)
+    }
+  }
 }
 
 case class ItemStored(center: Pos, edgePoints: List[Pos]) {}
@@ -139,6 +213,8 @@ object Item {
 
 case class Pos(x: Int, y: Int) {
   def +(other: Pos): Pos = Pos(x + other.x, y + other.y)
+
+  def -(other: Pos): Pos = Pos(x - other.x, y - other.y)
 
   def toCoor = Coor(x, y)
 
@@ -303,6 +379,12 @@ object Handler {
 
   def read(file: String): BufferedImage = {
     ImageIO.read(new java.io.File(file))
+  }
+
+  def readItem(file: String): Item = {
+    val json = FileUtils.read(s"$file.meta")
+    val stored = decode[ItemStored](json).getOrElse(???)
+    Item(ImageIO.read(new java.io.File(file)), stored.center, stored.edgePoints)
   }
 
   def rgb(c: Int): Color = {
@@ -538,7 +620,7 @@ object Handler {
     c > 0
   }
 
-  def rotationAngle(fst: Pos, snd: Pos): Double = {
+  def rotationAngle(fst: Coor, snd: Coor): Double = {
     Math.atan2(snd.y - fst.y, snd.x - fst.x)
   }
 
@@ -590,6 +672,12 @@ case class Line(a: Double, b: Double, c: Double) {
 object Line {
   def apply(fst: Coor, snd: Coor): Line = {
     Line(fst.y - snd.y, snd.x - fst.x, fst.x * snd.y - snd.x * fst.y)
+  }
+}
+
+case class Line2(fst: Coor, snd: Coor) {
+  def rotate(center: Pos, angle: Double): Line2 = {
+    Line2(fst.toPos.rotate(center, angle).toCoor, snd.toPos.rotate(center, angle).toCoor)
   }
 }
 

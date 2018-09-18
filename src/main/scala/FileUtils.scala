@@ -12,4 +12,8 @@ object FileUtils {
       write.close()
     }
   }
+
+  def read(fileName: String): String = {
+    scala.io.Source.fromFile(fileName).getLines().toList.mkString("\n")
+  }
 }
