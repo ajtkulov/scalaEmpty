@@ -43,11 +43,14 @@ object Main extends App {
     val r = read(input)
 
     val res = selectBasement(r)
-    val item: Item = selectItem(res)
-    val res1 = normalize(item)
+    val imgs = selectItems(res)
 
-    ImageIO.write(res1, "png", new File(output))
-    FileUtils.write(s"$output.meta", item.to.asJson.noSpaces)
+    imgs.zipWithIndex.foreach {
+      case (img, idx) =>
+        val item = selectItem(img)
+        ImageIO.write(img, "png", new File(s"$output.$idx.jpg"))
+        FileUtils.write(s"$output.$idx.meta", item.to.asJson.noSpaces)
+    }
   }
 }
 
@@ -282,6 +285,8 @@ class Image[C](values: Array[Array[C]]) {
 
   def apply(pos: Pos): C = values(pos.x)(pos.y)
 
+  def update(pos: Pos, value: C): Unit = values(pos.x)(pos.y) = value
+
   def getOrElse(pos: Pos, default: C): C = {
     if (inside(pos)) {
       values(pos.x)(pos.y)
@@ -348,7 +353,7 @@ class Image[C](values: Array[Array[C]]) {
         shift <- shifts
       } {
         val n = cur + shift
-        if (!set.contains(n) && f(values(n.x)(n.y))) {
+        if (inside(n) && !set.contains(n) && f(values(n.x)(n.y))) {
           size = size + 1
           set.add(n)
           q.enqueue(n)
@@ -390,6 +395,16 @@ object Handler {
 
     def isInside(pos: Pos): Boolean = {
       pos.x >= 0 && pos.y >= 0 && pos.x < f.getWidth && pos.y < f.getHeight
+    }
+
+    def copy: BufferedImage = {
+      val res = new BufferedImage(f.getWidth, f.getHeight, BufferedImage.TYPE_INT_RGB)
+      for {
+        x <- 0 until f.getWidth
+        y <- 0 until f.getHeight
+      } res.setRGB(x, y, f.getRGB(x, y))
+
+      res
     }
   }
 
@@ -512,13 +527,12 @@ object Handler {
     res
   }
 
-  def normalize(item: Item): BufferedImage = {
-    val res = new BufferedImage(item.f.getWidth, item.f.getHeight, BufferedImage.TYPE_INT_RGB)
+  def normalize(f: BufferedImage, center: Pos): BufferedImage = {
+    val res = new BufferedImage(f.getWidth, f.getHeight, BufferedImage.TYPE_INT_RGB)
 
-
-    val img = ColorImage(item.f.getColors)
-    img.bfs(item.center, x => nonEmpty(x), Some(pos => {
-      res.setRGB(pos.x, pos.y, item.f.getRGB(pos.x, pos.y))
+    val img = ColorImage(f.getColors)
+    img.bfs(center, x => nonEmpty(x), Some(pos => {
+      res.setRGB(pos.x, pos.y, f.getRGB(pos.x, pos.y))
     }))
 
     res
@@ -550,6 +564,17 @@ object Handler {
     } else {
       res
     }
+  }
+
+  def selectItems(f: BufferedImage): List[BufferedImage] = {
+    val img: Image[Boolean] = ColorImage(f.getColors).map(x => !isEmpty(x))
+    val rand = new Random(1)
+    val all = Iterator.continually(1).map(x => Pos(rand.nextInt(size), rand.nextInt(size))).map(x => img.bfs(x, identity, Some(pos => {
+      img(pos) = false
+    }))).take(100).toList
+      .filter { case (a, _, _) => a > 10000 }.groupBy(_._3).mapValues(x => x.head).values.toList
+
+    all.map(x => normalize(f, x._3))
   }
 
   def selectItem(f: BufferedImage) = {
