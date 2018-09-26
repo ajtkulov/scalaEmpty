@@ -48,8 +48,15 @@ object Main extends App {
     imgs.zipWithIndex.foreach {
       case (img, idx) =>
         val item = selectItem(img)
+
         ImageIO.write(img, "png", new File(s"$output.$idx.jpg"))
         FileUtils.write(s"$output.$idx.meta", item.to.asJson.noSpaces)
+
+        item.edgePoints.foreach {
+          d => mutate(img, d)
+        }
+
+        ImageIO.write(img, "png", new File(s"$output.$idx.dot.jpg"))
     }
   }
 }
@@ -483,6 +490,15 @@ object Handler {
 
   }
 
+  def mutateR(f: BufferedImage, pos: Pos, rad: Int) = {
+    for {
+      x <- 0 until f.getWidth
+      y <- 0 until f.getHeight()
+      if (Coor.distance(pos.toCoor, Coor(x, y)) < rad)
+    } f.setRGB(x, y, 123123123)
+
+  }
+
   def replaceBase(f: BufferedImage) = {
     for {
       x <- 0 until f.getWidth
@@ -577,6 +593,22 @@ object Handler {
     all.map(x => normalize(f, x._3))
   }
 
+  def checkCorner(img: Image[Boolean], rad: Int, rr: Int, center: Pos): Boolean = {
+    val steps = 720
+    val r = rad - 5
+    var res = 0
+    for (idx <- rr - 30 to rr + 30) {
+      val angle = 2 * Math.PI * idx / steps
+
+      val dot = center + Coor(Math.cos(angle) * r, Math.sin(angle) * r).toPos
+      if (img(dot)) {
+        res = res + 1
+      }
+    }
+
+    res < 15
+  }
+
   def selectItem(f: BufferedImage) = {
     assert(f.getWidth == size)
     assert(f.getHeight == size)
@@ -587,57 +619,30 @@ object Handler {
 
     val steps = 720
 
-    val beams: immutable.IndexedSeq[(Double, (Double, Coor))] = for (rad <- 0 until steps) yield {
-      val angle = 2 * Math.PI * rad / steps
-      (angle, beamLength(img, last._3, angle))
-    }
+    var rad = 600
 
-    val double: Array[(Double, (Double, Coor))] = (beams ++ beams).toArray
+    val res = ArrayBuffer[Pos]()
+    val buffer = ArrayBuffer[Pos]()
+    val center = last._3
 
-    val buf = scala.collection.mutable.ArrayBuffer[Jump]()
+    while (rad > 100 && res.size < 4) {
+      for (rr <- 0 until steps) yield {
+        val angle = 2 * Math.PI * rr / steps
 
-    val res = scala.collection.mutable.ArrayBuffer[Coor]()
-    val st = 100
-    val eps = 0.1
+        val dot = center + Coor(Math.cos(angle) * rad, Math.sin(angle) * rad).toPos
 
-    for (i <- 10 to double.size - 10) {
-      if (double(i)._2._1 < double(i + 1)._2._1 * 0.8) {
-        buf.append(Jump(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
+        if (img.getOrElse(dot, false) && res.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > 150)) {
+          buffer.append(dot)
+          if (checkCorner(img, rad, rr, center)) {
+            res.append(dot)
+          }
+        }
       }
+
+      rad = rad - 1
     }
 
-    for (i <- 0 to buf.size - 2) {
-      if (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) < 1.4) {
-        val startAngle = buf(i).before.angle + eps
-        val diff = (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) - 2 * eps) / st
-        val d = (0 to st).map { idx =>
-          beamLength(img, last._3, anglePlus(startAngle, diff * idx))
-        }.maxBy(_._1)
-
-        res.append(d._2)
-      }
-    }
-
-    buf.clear()
-    for (i <- 10 to double.size - 10) {
-      if (double(i)._2._1 > double(i + 1)._2._1 / 0.8) {
-        buf.append(Jump(AngleDist(double(i)._1, double(i)._2._1, double(i)._2._2), AngleDist(double(i + 1)._1, double(i + 1)._2._1, double(i + 1)._2._2)))
-      }
-    }
-
-    for (i <- 0 to buf.size - 2) {
-      if (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) < 1.4) {
-        val startAngle = buf(i).before.angle + eps
-        val diff = (angleDiff(buf(i).before.angle, buf(i + 1).before.angle) - 2 * eps) / st
-        val d = (0 to st).map { idx =>
-          beamLength(img, last._3, anglePlus(startAngle, diff * idx))
-        }.maxBy(_._1)
-
-        res.append(d._2)
-      }
-    }
-
-    Item.create(f, last._3, res.toList.map(_.toPos))
+    Item.create(f, last._3, res.toList)
   }
 
   def beamLength(f: Image[Boolean], start: Pos, angle: Double): (Double, Coor) = {
