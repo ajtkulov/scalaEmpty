@@ -26,17 +26,9 @@ case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    val r2 = readItem("test2.jpg")
-    val r3 = readItem("test3.jpg")
-    val r4 = readItem("test4.jpg")
+//    base("/Users/pavel/input/IMG_1526.JPG", "1.jpg")
 
-    tryMatch(r2, r3, "ss1-")
-    tryMatch(r2, r4, "ss2-")
-    tryMatch(r3, r4, "ss3-")
-
-    //    base("/Users/pavel/down/2.jpg", "test2.jpg")
-    //    base("/Users/pavel/down/3.jpg", "test3.jpg")
-    //    base("/Users/pavel/down/4.jpg", "test4.jpg")
+    dir("/Users/pavel/input")
   }
 
   def base(input: String, output: String) = {
@@ -58,6 +50,12 @@ object Main extends App {
 
         ImageIO.write(img, "png", new File(s"$output.$idx.dot.jpg"))
     }
+  }
+
+  def dir(dirName: String) = {
+    FileUtils.dir(dirName).foreach{f =>
+      println(f)
+      base(f.getAbsolutePath, s"output/${f.getName}")}
   }
 }
 
@@ -324,8 +322,8 @@ class Image[C](values: Array[Array[C]]) {
   }
 
   def center(f: C => Boolean): Pos = {
-    var cx = 0
-    var cy = 0
+    var cx = 0L
+    var cy = 0L
     var cnt = 0
     for {
       x <- 0 until width
@@ -336,7 +334,7 @@ class Image[C](values: Array[Array[C]]) {
       cnt = cnt + 1
     }
 
-    Pos(cx / cnt, cy / cnt)
+    Pos((cx / cnt).toInt, (cy / cnt).toInt)
   }
 
   lazy val shifts = List[Pos](Pos(1, 0), Pos(0, 1), Pos(-1, 0), Pos(0, -1))
@@ -486,7 +484,9 @@ object Handler {
     for {
       x <- 0 to 10
       y <- 0 to 10
-    } f.setRGB(pos.x + x, pos.y + y, 123123123)
+      p = Pos(pos.x + x, pos.y + y)
+      if f.isInside(p)
+    } f.setRGB(p.x, p.y, 0xff0000)
 
   }
 
@@ -595,18 +595,18 @@ object Handler {
 
   def checkCorner(img: Image[Boolean], rad: Int, rr: Int, center: Pos): Boolean = {
     val steps = 720
-    val r = rad - 5
+    val r = rad - 10
     var res = 0
     for (idx <- rr - 30 to rr + 30) {
       val angle = 2 * Math.PI * idx / steps
 
       val dot = center + Coor(Math.cos(angle) * r, Math.sin(angle) * r).toPos
-      if (img(dot)) {
+      if (img.getOrElse(dot, false)) {
         res = res + 1
       }
     }
 
-    res < 15
+    res < 22
   }
 
   def selectItem(f: BufferedImage) = {

@@ -16,4 +16,9 @@ object FileUtils {
   def read(fileName: String): String = {
     scala.io.Source.fromFile(fileName).getLines().toList.mkString("\n")
   }
+
+  def dir(name: String): List[File] = {
+    val dir = new File(name)
+    dir.listFiles().toList
+  }
 }
