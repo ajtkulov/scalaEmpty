@@ -39,9 +39,9 @@ object Main extends App {
 
     imgs.zipWithIndex.foreach {
       case (img, idx) =>
+        ImageIO.write(img, "png", new File(s"$output.$idx.jpg"))
         val item = selectItem(img)
 
-        ImageIO.write(img, "png", new File(s"$output.$idx.jpg"))
         FileUtils.write(s"$output.$idx.meta", item.to.asJson.noSpaces)
 
         item.edgePoints.foreach {
@@ -431,7 +431,7 @@ object Handler {
   }
 
   def isGreen(color: Color): Boolean = {
-    color.g > color.r * 1.6
+    color.g > color.r * 1.6 && color.b < color.g
   }
 
   def isEmpty(color: Color): Boolean = {
