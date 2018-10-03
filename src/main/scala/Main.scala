@@ -12,7 +12,7 @@ import MathUtils._
 import IteratorUtils._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.util.{Random, Try}
+import scala.util.{Random, Success, Try}
 import io.circe.syntax._
 import io.circe._
 import io.circe.{Decoder, Encoder}
@@ -59,8 +59,8 @@ object Main extends App {
         println(f)
         base(f.getAbsolutePath, s"output/${f.getName}")
         Thread.sleep(1000)
-        import sys.process._
-        s"mv ${f.getAbsolutePath} /Users/pavel/inputd" !
+        //        import sys.process._
+        //        s"mv ${f.getAbsolutePath} /Users/pavel/inputd" !
       }.getOrElse {
         println(s"********* $f")
         sys.exit(0)
@@ -297,6 +297,8 @@ object MathUtils {
   }
 
 }
+
+case class Params(eps: Double, threshold: Double, radius: Double) {}
 
 class Image[C](values: Array[Array[C]]) {
   def apply(x: Int) = values(x)
@@ -606,19 +608,30 @@ object Handler {
     all.map(x => normalize(f, x._3))
   }
 
-  def checkCorner(img: Image[Boolean], rad: Int, rr: Int, center: Pos, angle: Double, eps: Double = 0.07, threshold: Double = 2.3): Boolean = {
+  def checkCorner(img: Image[Boolean], rad: Int, rr: Int, center: Pos, angle: Double)(implicit params: Params): Boolean = {
 
     val (main, mc) = beamLengthOut(img, center, angle)
-    val (main1, mc1) = beamLengthOut(img, center, angle - eps)
-    val (main2, mc2) = beamLengthOut(img, center, angle + eps)
+    val (main1, mc1) = beamLengthOut(img, center, angle - params.eps)
+    val (main2, mc2) = beamLengthOut(img, center, angle + params.eps)
     val ang = Geom.angle(mc1 - mc, mc2 - mc)
 
     //    println(s"${mc.toPos} ${mc1.toPos} ${mc2.toPos} $ang")
 
-    ang < threshold
+    ang < params.threshold
   }
 
   def selectItem(f: BufferedImage) = {
+    val list: List[Params] = List(
+      Params(0.07, 2.3, 160)
+//      , Params(0.1, 2.35, 150)
+    )
+
+    list.toIterator.map(x => Try {
+      selectItem1(f)(x)
+    }).collect { case Success(x) => x }.take(1).toList.head
+  }
+
+  private def selectItem1(f: BufferedImage)(implicit params: Params) = {
     assert(f.getWidth == size)
     assert(f.getHeight == size)
 
@@ -640,12 +653,12 @@ object Handler {
 
         val dot = center + Coor(Math.cos(angle) * rad, Math.sin(angle) * rad).toPos
 
-        if (img.getOrElse(dot, false) && res.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > 160)) {
+        if (img.getOrElse(dot, false) && res.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > params.radius)) {
           buffer.append(dot)
 
           //          println(dot)
 
-          if (checkCorner(img, rad, rr, center, angle, 0.10, 2.2) || checkCorner(img, rad, rr, center, angle)) {
+          if (checkCorner(img, rad, rr, center, angle)) {
             res.append(dot)
           }
         }
