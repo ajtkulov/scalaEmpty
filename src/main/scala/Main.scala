@@ -12,7 +12,7 @@ import MathUtils._
 import IteratorUtils._
 
 import scala.collection.mutable.ArrayBuffer
-import scala.util.Random
+import scala.util.{Random, Try}
 import io.circe.syntax._
 import io.circe._
 import io.circe.{Decoder, Encoder}
@@ -26,8 +26,6 @@ case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-//    base("/Users/pavel/input/IMG_1526.JPG", "1.jpg")
-
     dir("/Users/pavel/input")
   }
 
@@ -42,6 +40,8 @@ object Main extends App {
         ImageIO.write(img, "png", new File(s"$output.$idx.jpg"))
         val item = selectItem(img)
 
+        assert(item.edgePoints.size == 4)
+
         FileUtils.write(s"$output.$idx.meta", item.to.asJson.noSpaces)
 
         item.edgePoints.foreach {
@@ -49,13 +49,24 @@ object Main extends App {
         }
 
         ImageIO.write(img, "png", new File(s"$output.$idx.dot.jpg"))
+
     }
   }
 
   def dir(dirName: String) = {
-    FileUtils.dir(dirName).foreach{f =>
-      println(f)
-      base(f.getAbsolutePath, s"output/${f.getName}")}
+    FileUtils.dir(dirName).filter(_.isFile).sortBy(_.getName).par.foreach { f =>
+      Try {
+        println(f)
+        base(f.getAbsolutePath, s"output/${f.getName}")
+        Thread.sleep(1000)
+        import sys.process._
+        s"mv ${f.getAbsolutePath} /Users/pavel/inputd" !
+      }.getOrElse {
+        println(s"********* $f")
+        sys.exit(0)
+        ???
+      }
+    }
   }
 }
 
@@ -219,7 +230,9 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends Li
   }
 }
 
-case class ItemStored(center: Pos, edgePoints: List[Pos]) {}
+case class ItemStored(center: Pos, edgePoints: List[Pos]) {
+  require(edgePoints.size == 4)
+}
 
 object ItemStored {
   implicit val encoder: Encoder[ItemStored] = deriveEncoder
@@ -431,7 +444,7 @@ object Handler {
   }
 
   def isGreen(color: Color): Boolean = {
-    color.g > color.r * 1.6 && color.b < color.g
+    color.g > color.r * 1.6 && color.b < color.g * 1.1
   }
 
   def isEmpty(color: Color): Boolean = {
@@ -480,10 +493,10 @@ object Handler {
     ImageIO.write(f, "jpg", new File("output.jpg"))
   }
 
-  def mutate(f: BufferedImage, pos: Pos) = {
+  def mutate(f: BufferedImage, pos: Pos, size: Int = 10) = {
     for {
-      x <- 0 to 10
-      y <- 0 to 10
+      x <- 0 to size
+      y <- 0 to size
       p = Pos(pos.x + x, pos.y + y)
       if f.isInside(p)
     } f.setRGB(p.x, p.y, 0xff0000)
@@ -593,20 +606,16 @@ object Handler {
     all.map(x => normalize(f, x._3))
   }
 
-  def checkCorner(img: Image[Boolean], rad: Int, rr: Int, center: Pos): Boolean = {
-    val steps = 720
-    val r = rad - 10
-    var res = 0
-    for (idx <- rr - 30 to rr + 30) {
-      val angle = 2 * Math.PI * idx / steps
+  def checkCorner(img: Image[Boolean], rad: Int, rr: Int, center: Pos, angle: Double, eps: Double = 0.07, threshold: Double = 2.3): Boolean = {
 
-      val dot = center + Coor(Math.cos(angle) * r, Math.sin(angle) * r).toPos
-      if (img.getOrElse(dot, false)) {
-        res = res + 1
-      }
-    }
+    val (main, mc) = beamLengthOut(img, center, angle)
+    val (main1, mc1) = beamLengthOut(img, center, angle - eps)
+    val (main2, mc2) = beamLengthOut(img, center, angle + eps)
+    val ang = Geom.angle(mc1 - mc, mc2 - mc)
 
-    res < 22
+    //    println(s"${mc.toPos} ${mc1.toPos} ${mc2.toPos} $ang")
+
+    ang < threshold
   }
 
   def selectItem(f: BufferedImage) = {
@@ -631,9 +640,12 @@ object Handler {
 
         val dot = center + Coor(Math.cos(angle) * rad, Math.sin(angle) * rad).toPos
 
-        if (img.getOrElse(dot, false) && res.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > 150)) {
+        if (img.getOrElse(dot, false) && res.size < 4 && buffer.forall(x => Coor.distance(dot.toCoor, x.toCoor) > 160)) {
           buffer.append(dot)
-          if (checkCorner(img, rad, rr, center)) {
+
+          //          println(dot)
+
+          if (checkCorner(img, rad, rr, center, angle, 0.10, 2.2) || checkCorner(img, rad, rr, center, angle)) {
             res.append(dot)
           }
         }
@@ -652,13 +664,20 @@ object Handler {
     (Coor.distance(st, last), last)
   }
 
-  def inside(f: Image[Boolean], pos: Pos): Boolean = {
+  def beamLengthOut(f: Image[Boolean], start: Pos, angle: Double): (Double, Coor) = {
+    val beam = Coor(Math.cos(angle), Math.sin(angle))
+    val st = Coor(start.x, start.y) + beam * 1000
+    val last = Iterator.iterate(st)(x => x - beam).dropWhile(x => !f.getOrElse(x.toPos, false)).take(1).toList.head
+    (Coor.distance(st, last), last)
+  }
+
+  def inside(f: Image[Boolean], pos: Pos, size: Int = 2): Boolean = {
     var c = 0
     for {
-      x <- pos.x - 2 to pos.x + 2
-      y <- pos.y - 2 to pos.y + 2
+      x <- pos.x - size to pos.x + size
+      y <- pos.y - size to pos.y + size
     } {
-      if (f(x)(y)) {
+      if (f.inside(Pos(x, y)) && f(x)(y)) {
         c = c + 1
       }
     }
@@ -700,6 +719,10 @@ case class Coor(x: Double, y: Double) {
     Coor(x - shift.x, y - shift.y)
   }
 
+  def *(num: Int): Coor = {
+    Coor(x * num, y * num)
+  }
+
   def rotate(angle: Double): Coor = {
     val c = Math.cos(angle)
     val s = Math.sin(angle)
@@ -707,6 +730,8 @@ case class Coor(x: Double, y: Double) {
   }
 
   def toPos = Pos(Math.round(x.toDouble).toInt, Math.round(y.toDouble).toInt)
+
+  def len: Double = Coor.distance(this, Coor(0, 0))
 }
 
 case class Line(a: Double, b: Double, c: Double) {
@@ -745,5 +770,14 @@ object Geom {
     Coor(((p1.x * p2.y - p1.y * p2.x) * (p3.x - p4.x) - (p1.x - p2.x) * (p3.x * p4.y - p3.y * p4.x)) / d,
       ((p1.x * p2.y - p1.y * p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x * p4.y - p3.y * p4.x)) / d
     )
+  }
+
+  def angle(v1: Coor, v2: Coor): Double = {
+    val eps = 0.1
+    if (v1.len < eps || v2.len < eps) {
+      Math.PI
+    } else {
+      Math.acos((v1.x * v2.x + v1.y * v2.y) / v1.len / v2.len)
+    }
   }
 }
