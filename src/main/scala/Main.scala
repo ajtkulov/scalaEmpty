@@ -26,7 +26,8 @@ case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    dir("/Users/pavel/input")
+    Match.main()
+//    dir("/Users/pavel/input")
   }
 
   def base(input: String, output: String) = {
@@ -98,11 +99,16 @@ object Matcher {
 
       shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
       val err = shift(sndRotated, out, nline2.snd.toPos, Pos(1024, 1024))
-      println(s"intersect: $err")
-      println(s"space: ${errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)}")
+      val space = errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)
 
-      ImageIO.write(out, "png", new File(s"${suff}${mm}.jpg"))
-      mm = mm + 1
+      if (err < 2000 && space < 1500) {
+        println(s"$suff$mm")
+        println(s"intersect: $err")
+        println(s"space: ${space}")
+
+        ImageIO.write(out, "png", new File(s"${suff}${mm}.jpg"))
+        mm = mm + 1
+      }
     }
   }
 
@@ -435,7 +441,7 @@ object Handler {
   def readItem(file: String): Item = {
     val json = FileUtils.read(s"$file.meta")
     val stored = decode[ItemStored](json).getOrElse(???)
-    Item(ImageIO.read(new java.io.File(file)), stored.center, stored.edgePoints)
+    Item(ImageIO.read(new java.io.File(s"$file.jpg")), stored.center, stored.edgePoints)
   }
 
   def rgb(c: Int): Color = {

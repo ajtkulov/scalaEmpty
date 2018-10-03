@@ -19,6 +19,6 @@ object FileUtils {
 
   def dir(name: String): List[File] = {
     val dir = new File(name)
-    dir.listFiles().toList
+    dir.listFiles().toList.filter(x => x.isFile)
   }
 }
