@@ -73,6 +73,18 @@ object Main extends App {
 }
 
 object Matcher {
+  def basicMatch(fst: Item, snd: Item): List[(Int, Int)] = {
+    val res = for {
+      f <- 0 until 4
+      s <- 0 until 4
+      ff = fst.distance(f)
+      ss = snd.distance(s)
+      if Math.abs(ff - ss) / ff < 0.05
+    } yield (f, s)
+
+    res.toList
+  }
+
   def tryMatch(fst: Item, snd: Item, suff: String) = {
     var mm = 0
 

@@ -4,13 +4,7 @@ import java.io.File
 
 import javax.imageio.ImageIO
 import io.circe.syntax._
-import io.circe._
-import io.circe.{Decoder, Encoder}
-import io.circe.generic.semiauto._
-import io.circe.generic.auto._
 import ItemStored._
-import io.circe.parser.decode
-import Matcher._
 
 object Match {
   def readFiles(dir: String): List[(String, Int, String)] = {
@@ -20,13 +14,15 @@ object Match {
   }
 
 
-  def read(dir: String): Map[Int, WItem] = {
-    readFiles(dir).par.map { x =>
-//    readFiles(dir).map { x =>
+  def read(dir: String): Data = {
+    val res = readFiles(dir).par.map { x =>
+      //    readFiles(dir).map { x =>
       println(x)
       val item = Handler.readItem(x._1)
       WItem(item, x._2, x._3)
-    }.toList.groupBy(_.idx).mapValues(_.head)
+    }.toList
+
+    Data(res)
   }
 
   def findMatch(idx: Int) = {
@@ -44,8 +40,55 @@ object Match {
     }
   }
 
-  def double(fst: Int, snd: Int, data: Map[Int, WItem]) = {
+  def check(f2s: List[(Int, Int)], f2ff: List[(Int, Int)], ff2ss: List[(Int, Int)], ss2s: List[(Int, Int)]): Boolean = {
+    val res = for {
+      (f1, s1) <- f2s
+      (f2, ff1) <- f2ff
+      if f2 != f1
+      (ff2, ss1) <- ff2ss
+      if ff1 != ff2
+      (ss2, s2) <- ss2s
+      if ss1 != ss2 && s1 != s2
+    } yield ()
 
+    res.nonEmpty
+  }
+
+  def double(fst: Int, snd: Int, data: Data) = {
+    var r = 0
+    val f = data(fst)
+    val s = data(snd)
+
+    val f2s = Matcher.basicMatch(f.item, s.item)
+
+    assert(f2s.nonEmpty)
+
+    for {
+      fi <- 0 until data.size
+      si <- fi + 1 until data.size
+      ff = data.byIdx(fi)
+      ss = data.byIdx(si)
+      if ff.idx != f.idx && ff.idx != s.idx && ss.idx != f.idx && ss.idx != s.idx
+
+      f2ff = Matcher.basicMatch(f.item, ff.item)
+      if f2ff.nonEmpty
+
+      ss2s = Matcher.basicMatch(ss.item, s.item)
+      if ss2s.nonEmpty
+
+      ff2ss = Matcher.basicMatch(ff.item, ss.item)
+      if ff2ss.nonEmpty
+      if check(f2s, f2ff, ff2ss, ss2s)
+    } {
+      println(s"${ff.idx} ${ss.idx}")
+
+    }
+    println(r)
+  }
+
+  def dd() = {
+    val data = read("/Users/pavel/puzzle/center")
+    double(16110, 16081, data)
   }
 
 
@@ -61,3 +104,14 @@ object Match {
 }
 
 case class WItem(item: Item, idx: Int, name: String) {}
+
+case class Data(values: List[WItem]) {
+  lazy val map = values.groupBy(_.idx).mapValues(_.head)
+  lazy val arr = values.toArray
+
+  def apply(idx: Int) = map(idx)
+
+  def size = arr.size
+
+  def byIdx(idx: Int) = arr(idx)
+}
