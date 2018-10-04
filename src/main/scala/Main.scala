@@ -85,7 +85,7 @@ object Matcher {
     res.toList
   }
 
-  def tryMatch(fst: Item, snd: Item, suff: String) = {
+  def tryMatch(fst: Item, snd: Item, con1: List[ConcaveConvex], con2: List[ConcaveConvex], suff: String) = {
     var mm = 0
 
     for {
@@ -94,6 +94,7 @@ object Matcher {
       ff = fst.distance(f)
       ss = snd.distance(s)
       if Math.abs(ff - ss) / ff < 0.05
+      if con1(f).convex ^ con2(s).convex
     } {
       val line1 = fst.line2(f)
       val line2 = snd.line2(s)

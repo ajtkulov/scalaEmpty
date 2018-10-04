@@ -5,6 +5,7 @@ import java.io.File
 import javax.imageio.ImageIO
 import io.circe.syntax._
 import ItemStored._
+import io.circe.parser.decode
 
 object Match {
   def readFiles(dir: String): List[(String, Int, String)] = {
@@ -19,7 +20,10 @@ object Match {
       //    readFiles(dir).map { x =>
       println(x)
       val item = Handler.readItem(x._1)
-      WItem(item, x._2, x._3)
+      val json = FileUtils.read(s"${x._1}.meta.concave")
+      val concave = decode[List[ConcaveConvex]](json).getOrElse(???)
+
+      WItem(item, x._2, x._3, concave)
     }.toList
 
     Data(res)
@@ -36,7 +40,7 @@ object Match {
     val m = r(idx)
 
     r.values.par.foreach { i =>
-      Matcher.tryMatch(m.item, i.item, s"${m.idx}_${i.idx}")
+      Matcher.tryMatch(m.item, i.item, m.concave, i.concave, s"${m.idx}_${i.idx}")
     }
   }
 
@@ -111,7 +115,7 @@ object Match {
   }
 }
 
-case class WItem(item: Item, idx: Int, name: String) {}
+case class WItem(item: Item, idx: Int, name: String, concave: List[ConcaveConvex]) {}
 
 case class Data(values: List[WItem]) {
   lazy val map = values.groupBy(_.idx).mapValues(_.head)
