@@ -26,8 +26,9 @@ case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    Match.main()
-//    dir("/Users/pavel/input")
+        Match.main()
+
+    //    dir("/Users/pavel/input")
   }
 
   def base(input: String, output: String) = {
@@ -150,6 +151,28 @@ object Matcher {
     }
     err
   }
+
+  def center(f: BufferedImage, center: Pos): (BufferedImage, Pos) = {
+    val ff = new BufferedImage(f.getWidth, f.getHeight, BufferedImage.TYPE_INT_RGB)
+
+    val c = Pos(f.getWidth / 2, f.getHeight / 2)
+
+    val delta = c - center
+
+    for {
+      x <- 0 until f.getWidth
+      y <- 0 until f.getHeight
+    } {
+      val pos = Pos(x, y)
+      val on = pos - delta
+      if (f.isInside(on)) {
+        ff.setRGB(x, y, f.getRGB(on.x, on.y))
+      }
+    }
+
+    (ff, c)
+  }
+
 }
 
 trait LineOrder {
@@ -233,6 +256,12 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends Li
     } else {
       Line2(edgePoints(idx).toCoor, edgePoints(idx + 1).toCoor)
     }
+  }
+
+  def toCenter: Item = {
+    val (ff, newC) = Matcher.center(f, center)
+
+    Item(ff, newC, edgePoints.map(x => x - center + newC))
   }
 }
 
@@ -629,7 +658,7 @@ object Handler {
   def selectItem(f: BufferedImage) = {
     val list: List[Params] = List(
       Params(0.07, 2.3, 160)
-//      , Params(0.1, 2.35, 150)
+      //      , Params(0.1, 2.35, 150)
     )
 
     list.toIterator.map(x => Try {
