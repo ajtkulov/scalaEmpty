@@ -231,6 +231,31 @@ trait LineOrder {
     sign * 6 < cnt
   }
 
+  def convexConcave(line: Line): (Int, Pos) = {
+    var cnt: Int = 0
+    var sign: Int = 0
+    var cx = 0L
+    var cy = 0L
+
+    for {
+      x <- 0 until bools.width
+      y <- 0 until bools.height
+    } {
+
+      val pos = Pos(x, y)
+      if (bools(pos)) {
+        cnt = cnt + 1
+        if (line(pos.toCoor) > 0) {
+          sign = sign + 1
+          cx = cx + x
+          cy = cy + y
+        }
+      }
+    }
+
+    (sign, Pos((cx / sign).toInt, (cy / sign).toInt))
+  }
+
   def order: List[Pos] = {
     val line = lines
 
@@ -274,6 +299,29 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends Li
     val (ff, newC) = Matcher.center(f, center)
 
     Item(ff, newC, edgePoints.map(x => x - center + newC))
+  }
+
+  def concave: List[ConcaveConvex] = {
+    val img = ColorImage(f.getColors).map(x => nonEmpty(x))
+
+    (0 until 4).map { idx =>
+      val line = line2(idx)
+      val res = convexConcave(Line(line))
+      if (res._1 > 6000) {
+        ConcaveConvex(true, res._1, res._2)
+      } else {
+        val vect = (line.snd - line.fst) * 0.01
+        val r = (20 to 80).toIterator.map { idx =>
+          val c = (line.fst + vect * idx).toPos
+          img.bfs(c, x => !x, None, Some(Line(line)))
+        }.filter(_._1 > 2000).take(1).toList.headOption
+
+        val rr = r.map(x => (x._1, x._3)).getOrElse((0, Pos(0, 0)))
+
+        assert(rr._1 < 20000)
+        ConcaveConvex(false, rr._1, rr._2)
+      }
+    }.toList
   }
 }
 
@@ -401,7 +449,7 @@ class Image[C](values: Array[Array[C]]) {
 
   lazy val shifts = List[Pos](Pos(1, 0), Pos(0, 1), Pos(-1, 0), Pos(0, -1))
 
-  def bfs(pos: Pos, f: C => Boolean, sideEffect: Option[Pos => Unit] = None): (Int, Rect, Pos) = {
+  def bfs(pos: Pos, f: C => Boolean, sideEffect: Option[Pos => Unit] = None, line: Option[Line] = None): (Int, Rect, Pos) = {
     val set = mutable.Set[Pos]()
     var size = 0
     var br: Pos = Pos(Int.MaxValue, Int.MaxValue)
@@ -420,7 +468,7 @@ class Image[C](values: Array[Array[C]]) {
         shift <- shifts
       } {
         val n = cur + shift
-        if (inside(n) && !set.contains(n) && f(values(n.x)(n.y))) {
+        if (inside(n) && !set.contains(n) && f(values(n.x)(n.y)) && line.forall(l => l.apply(n.toCoor) < 0)) {
           size = size + 1
           set.add(n)
           q.enqueue(n)
@@ -779,7 +827,7 @@ case class Coor(x: Double, y: Double) {
     Coor(x - shift.x, y - shift.y)
   }
 
-  def *(num: Int): Coor = {
+  def *(num: Double): Coor = {
     Coor(x * num, y * num)
   }
 
@@ -803,6 +851,10 @@ case class Line(a: Double, b: Double, c: Double) {
 object Line {
   def apply(fst: Coor, snd: Coor): Line = {
     Line(fst.y - snd.y, snd.x - fst.x, fst.x * snd.y - snd.x * fst.y)
+  }
+
+  def apply(line2: Line2): Line = {
+    apply(line2.fst, line2.snd)
   }
 }
 
@@ -840,4 +892,11 @@ object Geom {
       Math.acos((v1.x * v2.x + v1.y * v2.y) / v1.len / v2.len)
     }
   }
+}
+
+case class ConcaveConvex(convex: Boolean, size: Int, center: Pos) {}
+
+object ConcaveConvex {
+  implicit val encoder: Encoder[ConcaveConvex] = deriveEncoder
+  implicit val decoder: Decoder[ConcaveConvex] = deriveDecoder
 }

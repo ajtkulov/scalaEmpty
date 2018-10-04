@@ -101,6 +101,14 @@ object Match {
       FileUtils.write(s"$prefix${x._3.dropRight(4)}meta", item.to.asJson.noSpaces)
     }
   }
+
+  def concave(dir: String) = {
+    read(dir).values.foreach { item =>
+      println(item.name)
+      val concave = item.item.concave
+      FileUtils.write(s"${item.name}.concave", concave.asJson.noSpaces)
+    }
+  }
 }
 
 case class WItem(item: Item, idx: Int, name: String) {}
