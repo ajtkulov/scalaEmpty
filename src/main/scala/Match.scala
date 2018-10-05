@@ -17,16 +17,19 @@ object Match {
 
   def read(dir: String): Data = {
     val res = readFiles(dir).par.map { x =>
-      //    readFiles(dir).map { x =>
       println(x)
-      val item = Handler.readItem(x._1)
-      val json = FileUtils.read(s"${x._1}.meta.concave")
-      val concave = decode[List[ConcaveConvex]](json).getOrElse(???)
-
-      WItem(item, x._2, x._3, concave)
+      readWItem(x._1, x._2, x._3)
     }.toList
 
     Data(res)
+  }
+
+  def readWItem(fileName: String, idx: Int, name: String) = {
+    val item = Handler.readItem(fileName)
+    val json = FileUtils.read(s"${fileName}.meta.concave")
+    val concave = decode[List[ConcaveConvex]](json).getOrElse(???)
+
+    WItem(item, idx, name, concave)
   }
 
   def findMatch(idx: Int) = {

@@ -28,7 +28,6 @@ object Main extends App {
   override def main(args: Array[String]): Unit = {
         Match.main()
 
-    //    dir("/Users/pavel/input")
   }
 
   def base(input: String, output: String) = {
@@ -93,35 +92,48 @@ object Matcher {
       s <- 0 until 4
       ff = fst.distance(f)
       ss = snd.distance(s)
-      if Math.abs(ff - ss) / ff < 0.05
-      if con1(f).convex ^ con2(s).convex
+      delta = Math.abs(ff - ss) / ff
+      if delta < 0.025
+      c1 = con1(f)
+      c2 = con2(s)
+      if c1.convex ^ c2.convex
     } {
       val line1 = fst.line2(f)
       val line2 = snd.line2(s)
 
       val r1 = rotationAngle(line1.fst, line1.snd)
       val fstRotated = rotate(fst.f, r1, fst.center)
+      val newC1 = c1.center.rotate(fst.center, -r1)
 
       val nline1 = line1.rotate(fst.center, -r1)
 
       val r2 = rotationAngle(line2.fst, line2.snd) + Math.PI
       val sndRotated = rotate(snd.f, r2, snd.center)
+      val newC2 = c2.center.rotate(snd.center, -r2)
 
       val nline2 = line2.rotate(snd.center, -r2)
 
-      val out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
+      val nnC1 = Pos(1024, 1024) - nline1.fst.toPos + newC1
+      val nnC2 = Pos(1024, 1024) - nline2.snd.toPos + newC2
 
-      shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
-      val err = shift(sndRotated, out, nline2.snd.toPos, Pos(1024, 1024))
-      val space = errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)
+      val dd = Coor.distance(nnC1.toCoor, nnC2.toCoor)
+      if (dd < 10) {
+        val out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
 
-      if (err < 2000 && space < 1500) {
-        println(s"$suff$mm")
-        println(s"intersect: $err")
-        println(s"space: ${space}")
+        shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
+        val err = shift(sndRotated, out, nline2.snd.toPos, Pos(1024, 1024))
 
-        ImageIO.write(out, "png", new File(s"${suff}${mm}.jpg"))
-        mm = mm + 1
+        val space = errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)
+
+        if (err < 2000 && space < 1500) {
+          println(s"$suff$mm")
+          println(s"intersect: $err")
+          println(s"space: ${space}")
+          println(s"delta: ${delta}")
+
+          ImageIO.write(out, "png", new File(s"${suff}${mm}.jpg"))
+          mm = mm + 1
+        }
       }
     }
   }
