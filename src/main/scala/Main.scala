@@ -26,8 +26,9 @@ case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-        Match.main()
+    //        Match.main()
 
+    Match.main()
   }
 
   def base(input: String, output: String) = {
@@ -72,20 +73,28 @@ object Main extends App {
 }
 
 object Matcher {
-  def basicMatch(fst: Item, snd: Item): List[(Int, Int)] = {
+  def basicMatch(fst: WItem, snd: WItem)(implicit params: MatchParams): List[(Int, Int)] = {
     val res = for {
       f <- 0 until 4
       s <- 0 until 4
-      ff = fst.distance(f)
-      ss = snd.distance(s)
-      if Math.abs(ff - ss) / ff < 0.05
+      ff = fst.item.distance(f)
+      ss = snd.item.distance(s)
+      delta = Math.abs(ff - ss) / ff
+      if delta < params.sizeDiff
+      c1 = fst.concave(f)
+      c2 = snd.concave(s)
+      if c1.convex ^ c2.convex
+      if Math.abs(c1.size - c2.size) < params.diffInConvex
     } yield (f, s)
 
     res.toList
   }
 
-  def tryMatch(fst: Item, snd: Item, con1: List[ConcaveConvex], con2: List[ConcaveConvex], suff: String) = {
-    var mm = 0
+  def tryMatch(fw: WItem, sw: WItem, suff: String)(implicit params: MatchParams) = {
+    val res = ArrayBuffer[(String, String)]()
+
+    val fst = fw.item
+    val snd = sw.item
 
     for {
       f <- 0 until 4
@@ -93,22 +102,21 @@ object Matcher {
       ff = fst.distance(f)
       ss = snd.distance(s)
       delta = Math.abs(ff - ss) / ff
-      if delta < 0.025
-      c1 = con1(f)
-      c2 = con2(s)
+      if delta < params.sizeDiff
+      c1 = fw.concave(f)
+      c2 = sw.concave(s)
       if c1.convex ^ c2.convex
+      if Math.abs(c1.size - c2.size) < params.diffInConvex
     } {
       val line1 = fst.line2(f)
       val line2 = snd.line2(s)
 
       val r1 = rotationAngle(line1.fst, line1.snd)
-      val fstRotated = rotate(fst.f, r1, fst.center)
       val newC1 = c1.center.rotate(fst.center, -r1)
 
       val nline1 = line1.rotate(fst.center, -r1)
 
       val r2 = rotationAngle(line2.fst, line2.snd) + Math.PI
-      val sndRotated = rotate(snd.f, r2, snd.center)
       val newC2 = c2.center.rotate(snd.center, -r2)
 
       val nline2 = line2.rotate(snd.center, -r2)
@@ -118,6 +126,8 @@ object Matcher {
 
       val dd = Coor.distance(nnC1.toCoor, nnC2.toCoor)
       if (dd < 10) {
+        val fstRotated = rotate(fst.f, r1, fst.center)
+        val sndRotated = rotate(snd.f, r2, snd.center)
         val out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
 
         shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
@@ -125,17 +135,24 @@ object Matcher {
 
         val space = errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)
 
-        if (err < 2000 && space < 1500) {
-          println(s"$suff$mm")
-          println(s"intersect: $err")
-          println(s"space: ${space}")
-          println(s"delta: ${delta}")
+        val mm = s"_${f}_${s}"
+        if (err < params.error && space < params.space) {
+          val rr =
+            s"""
+              |$suff$mm
+              |intersect: $err; space: ${space}; delta: ${delta}
+              |centerDiff: $dd
+              |sizes: ${c1.size} ${c2.size}
+            """.stripMargin
 
-          ImageIO.write(out, "png", new File(s"${suff}${mm}.jpg"))
-          mm = mm + 1
+          val output = s"${suff}${mm}.jpg"
+          ImageIO.write(out, "png", new File(output))
+          res.append((output, rr))
         }
       }
     }
+
+    res.toList
   }
 
   def errorSpace(f: BufferedImage, width: Int): Int = {
@@ -407,6 +424,14 @@ object MathUtils {
 }
 
 case class Params(eps: Double, threshold: Double, radius: Double) {}
+
+case class MatchParams(sizeDiff: Double, error: Int, space: Int, diffInConvex: Int) {}
+
+object MatchParams {
+  val precise = MatchParams(0.025, 2000, 350, 800)
+
+  val standard = MatchParams(0.05, 2000, 1500, 1500)
+}
 
 class Image[C](values: Array[Array[C]]) {
   def apply(x: Int) = values(x)

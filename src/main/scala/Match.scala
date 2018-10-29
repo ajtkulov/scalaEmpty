@@ -32,10 +32,6 @@ object Match {
     WItem(item, idx, name, concave)
   }
 
-  def findMatch(idx: Int) = {
-
-  }
-
 
   def main() = {
     val idx = 16110
@@ -43,7 +39,7 @@ object Match {
     val m = r(idx)
 
     r.values.par.foreach { i =>
-      Matcher.tryMatch(m.item, i.item, m.concave, i.concave, s"${m.idx}_${i.idx}")
+      Matcher.tryMatch(m, i, s"${m.idx}_${i.idx}")(MatchParams.precise)
     }
   }
 
@@ -61,12 +57,12 @@ object Match {
     res.nonEmpty
   }
 
-  def double(fst: Int, snd: Int, data: Data) = {
+  def double(fst: Int, snd: Int, data: Data)(implicit params: MatchParams) = {
     var r = 0
     val f = data(fst)
     val s = data(snd)
 
-    val f2s = Matcher.basicMatch(f.item, s.item)
+    val f2s = Matcher.basicMatch(f, s)
 
     assert(f2s.nonEmpty)
 
@@ -77,17 +73,18 @@ object Match {
       ss = data.byIdx(si)
       if ff.idx != f.idx && ff.idx != s.idx && ss.idx != f.idx && ss.idx != s.idx
 
-      f2ff = Matcher.basicMatch(f.item, ff.item)
+      f2ff = Matcher.basicMatch(f, ff)
       if f2ff.nonEmpty
 
-      ss2s = Matcher.basicMatch(ss.item, s.item)
+      ss2s = Matcher.basicMatch(ss, s)
       if ss2s.nonEmpty
 
-      ff2ss = Matcher.basicMatch(ff.item, ss.item)
+      ff2ss = Matcher.basicMatch(ff, ss)
       if ff2ss.nonEmpty
       if check(f2s, f2ff, ff2ss, ss2s)
     } {
       println(s"${ff.idx} ${ss.idx}")
+      r = r + 1
 
     }
     println(r)
@@ -95,7 +92,43 @@ object Match {
 
   def dd() = {
     val data = read("/Users/pavel/puzzle/center")
-    double(16110, 16081, data)
+    double(16110, 16081, data)(MatchParams.precise)
+  }
+
+  def main1(): Unit = {
+
+    val data = read("/Users/pavel/puzzle/center")
+    //    both(16081, 14872, data)(MatchParams.precise)
+//    both(16081, 14872, data)(MatchParams.standard)
+  }
+
+  def both(fst: Int, snd: Int, data: Data)(implicit params: MatchParams) = {
+    val f = data(fst)
+    val s = data(snd)
+    var r = 0
+
+    (0 until data.size).par.foreach { idx =>
+      val other = data.byIdx(idx)
+      val f1 = Matcher.basicMatch(f, other)
+      val s1 = Matcher.basicMatch(s, other)
+      if (f1.nonEmpty && s1.nonEmpty && (f1.map(_._2) ++ s1.map(_._2)).distinct.size > 1) {
+
+        val z = Matcher.tryMatch(other, f, s"${other.idx}_${f.idx}")(params)
+        if (z.nonEmpty) {
+          val z1 = Matcher.tryMatch(other, s, s"${other.idx}_${s.idx}")(params)
+          if (z1.isEmpty) {
+            z.foreach(fileName => new File(fileName._1).delete())
+          } else {
+            println(other.idx)
+            r = r + 1
+          }
+        }
+        //        println(other.idx)
+        //        r = r + 1
+      }
+    }
+
+    println(s"=$r")
   }
 
 
@@ -128,5 +161,5 @@ case class Data(values: List[WItem]) {
 
   def size = arr.size
 
-  def byIdx(idx: Int) = arr(idx)
+  def byIdx(idx: Int): WItem = arr(idx)
 }
