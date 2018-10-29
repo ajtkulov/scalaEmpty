@@ -27,8 +27,6 @@ case class Color(r: Int, g: Int, b: Int) {}
 object Main extends App {
   override def main(args: Array[String]): Unit = {
     //        Match.main()
-
-    Match.main()
   }
 
   def base(input: String, output: String) = {

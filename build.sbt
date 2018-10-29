@@ -16,4 +16,8 @@ libraryDependencies += "io.circe" %% "circe-generic" % "0.10.0-M1"
 
 libraryDependencies += "io.circe" %% "circe-parser" % "0.10.0-M1"
 
+libraryDependencies +=  "com.typesafe.akka" %% "akka-http"            % "10.0.10"
+
+libraryDependencies +=  "com.typesafe.akka" %% "akka-http-spray-json" % "10.0.10"
+
 fork := true

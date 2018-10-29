@@ -6,6 +6,7 @@ import javax.imageio.ImageIO
 import io.circe.syntax._
 import ItemStored._
 import io.circe.parser.decode
+import some.Holder
 
 object Match {
   def readFiles(dir: String): List[(String, Int, String)] = {
@@ -33,9 +34,8 @@ object Match {
   }
 
 
-  def main() = {
-    val idx = 16110
-    val r = read("/Users/pavel/puzzle/center")
+  def oneMatch(idx: Int) = {
+    val r = Holder.r
     val m = r(idx)
 
     r.values.par.foreach { i =>
