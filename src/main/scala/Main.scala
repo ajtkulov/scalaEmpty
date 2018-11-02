@@ -26,7 +26,19 @@ case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    //        Match.main()
+    Match.concave("/Users/pavel/code/scalaEmpty/center")
+  }
+
+  def manual(input: String) = {
+    val item = readItem(input)
+
+    mutate(item.f, item.center, color = 0x00ff00)
+
+    item.edgePoints.foreach {
+      d => mutate(item.f, d)
+    }
+
+    ImageIO.write(item.f, "png", new File(s"$input.output.jpg"))
   }
 
   def base(input: String, output: String) = {
@@ -37,19 +49,22 @@ object Main extends App {
 
     imgs.zipWithIndex.foreach {
       case (img, idx) =>
-        ImageIO.write(img, "png", new File(s"$output.$idx.jpg"))
-        val item = selectItem(img)
+        Try {
+          ImageIO.write(img, "png", new File(s"$output.$idx.jpg"))
+          val item = selectItem(img)
 
-        assert(item.edgePoints.size == 4)
+          assert(item.edgePoints.size == 4)
 
-        FileUtils.write(s"$output.$idx.meta", item.to.asJson.noSpaces)
+          FileUtils.write(s"$output.$idx.meta", item.to.asJson.noSpaces)
 
-        item.edgePoints.foreach {
-          d => mutate(img, d)
+          mutate(img, item.center, color = 0x00ff00)
+
+          item.edgePoints.foreach {
+            d => mutate(img, d)
+          }
+
+          ImageIO.write(img, "png", new File(s"$output.$idx.dot.jpg"))
         }
-
-        ImageIO.write(img, "png", new File(s"$output.$idx.dot.jpg"))
-
     }
   }
 
@@ -79,8 +94,8 @@ object Matcher {
       ss = snd.item.distance(s)
       delta = Math.abs(ff - ss) / ff
       if delta < params.sizeDiff
-      c1 = fst.concave(f)
-      c2 = snd.concave(s)
+      c1 = fst.metaData.concave(f)
+      c2 = snd.metaData.concave(s)
       if c1.convex ^ c2.convex
       if Math.abs(c1.size - c2.size) < params.diffInConvex
     } yield (f, s)
@@ -101,8 +116,8 @@ object Matcher {
       ss = snd.distance(s)
       delta = Math.abs(ff - ss) / ff
       if delta < params.sizeDiff
-      c1 = fw.concave(f)
-      c2 = sw.concave(s)
+      c1 = fw.metaData.concave(f)
+      c2 = sw.metaData.concave(s)
       if c1.convex ^ c2.convex
       if Math.abs(c1.size - c2.size) < params.diffInConvex
     } {
@@ -124,8 +139,8 @@ object Matcher {
 
       val dd = Coor.distance(nnC1.toCoor, nnC2.toCoor)
       if (dd < 10) {
-        val fstRotated = rotate(fst.f, r1, fst.center)
-        val sndRotated = rotate(snd.f, r2, snd.center)
+        val fstRotated = rotate(fst, r1, fst.center)
+        val sndRotated = rotate(snd, r2, snd.center)
         val out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
 
         shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
@@ -137,10 +152,10 @@ object Matcher {
         if (err < params.error && space < params.space) {
           val rr =
             s"""
-              |$suff$mm
-              |intersect: $err; space: ${space}; delta: ${delta}
-              |centerDiff: $dd
-              |sizes: ${c1.size} ${c2.size}
+               |$suff$mm
+               |intersect: $err; space: ${space}; delta: ${delta}
+               |centerDiff: $dd
+               |sizes: ${c1.size} ${c2.size}
             """.stripMargin
 
           val output = s"${suff}${mm}.jpg"
@@ -300,6 +315,8 @@ trait LineOrder {
 
 }
 
+case class MinMax(minX: Int, maxX: Int, minY: Int, maxY: Int) {}
+
 case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends LineOrder {
   lazy val bools: Image[Boolean] = ColorImage(f.getColors).map(x => nonEmpty(x))
 
@@ -330,6 +347,7 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends Li
   }
 
   def concave: List[ConcaveConvex] = {
+    val x = minMax()
     val img = ColorImage(f.getColors).map(x => nonEmpty(x))
 
     (0 until 4).map { idx =>
@@ -350,6 +368,25 @@ case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends Li
         ConcaveConvex(false, rr._1, rr._2)
       }
     }.toList
+  }
+
+  def metaData = {
+    MetaData(concave, minMax())
+  }
+
+  def minMax(): MinMax = {
+    var (minX, maxX, minY, maxY) = (Int.MaxValue, 0, Int.MaxValue, 0)
+    for {
+      x <- 0 until f.getWidth
+      y <- 0 until f.getHeight
+    } if (nonEmpty(f.getColor(x, y))) {
+      if (x < minX) minX = x
+      if (y < minY) minY = y
+      if (x > maxX) maxX = x
+      if (y > maxY) maxY = y
+    }
+
+    MinMax(minX, maxX, minY, maxY)
   }
 }
 
@@ -429,6 +466,8 @@ object MatchParams {
   val precise = MatchParams(0.025, 2000, 350, 800)
 
   val standard = MatchParams(0.05, 2000, 1500, 1500)
+
+  val medium = MatchParams(0.035, 2000, 1200, 1200)
 }
 
 class Image[C](values: Array[Array[C]]) {
@@ -626,13 +665,13 @@ object Handler {
     ImageIO.write(f, "jpg", new File("output.jpg"))
   }
 
-  def mutate(f: BufferedImage, pos: Pos, size: Int = 10) = {
+  def mutate(f: BufferedImage, pos: Pos, size: Int = 10, color: Int = 0xff0000) = {
     for {
       x <- 0 to size
       y <- 0 to size
       p = Pos(pos.x + x, pos.y + y)
       if f.isInside(p)
-    } f.setRGB(p.x, p.y, 0xff0000)
+    } f.setRGB(p.x, p.y, color)
 
   }
 
@@ -833,16 +872,25 @@ object Handler {
     Math.atan2(snd.y - fst.y, snd.x - fst.x)
   }
 
-  def rotate(f: BufferedImage, angle: Double, center: Pos): BufferedImage = {
-    val ff = new BufferedImage(f.getWidth, f.getHeight, BufferedImage.TYPE_INT_RGB)
+  def rotate(f: Item, angle: Double, center: Pos): BufferedImage = {
+    val qq = f.f
+    val ff = new BufferedImage(qq.getWidth, qq.getHeight, BufferedImage.TYPE_INT_RGB)
+
+    //    f.bools.bfs(f.center, identity, Some {
+    //      pos =>
+    //        val newPos = pos.rotate(center, angle)
+    //        if (qq.isInside(newPos)) {
+    //          ff.setRGB(newPos.x, newPos.y, qq.getRGB(pos.x, pos.y))
+    //        }
+    //    })
 
     for {
-      x <- 0 until f.getWidth
-      y <- 0 until f.getHeight
+      x <- 0 until qq.getWidth
+      y <- 0 until qq.getHeight
     } {
       val pos = Pos(x, y).rotate(center, angle)
-      if (f.isInside(pos)) {
-        ff.setRGB(x, y, f.getRGB(pos.x, pos.y))
+      if (qq.isInside(pos)) {
+        ff.setRGB(x, y, qq.getRGB(pos.x, pos.y))
       }
     }
 
@@ -932,7 +980,16 @@ object Geom {
 
 case class ConcaveConvex(convex: Boolean, size: Int, center: Pos) {}
 
+case class MetaData(concave: List[ConcaveConvex], minMax: MinMax)
+
 object ConcaveConvex {
   implicit val encoder: Encoder[ConcaveConvex] = deriveEncoder
   implicit val decoder: Decoder[ConcaveConvex] = deriveDecoder
+}
+
+object MetaData {
+  implicit val encoder: Encoder[MetaData] = deriveEncoder
+  implicit val decoder: Decoder[MetaData] = deriveDecoder
+
+  lazy val empty: MetaData = MetaData(List(), MinMax(0, 0, 0, 0))
 }

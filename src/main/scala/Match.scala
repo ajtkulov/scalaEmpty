@@ -27,19 +27,23 @@ object Match {
 
   def readWItem(fileName: String, idx: Int, name: String) = {
     val item = Handler.readItem(fileName)
-    val json = FileUtils.read(s"${fileName}.meta.concave")
-    val concave = decode[List[ConcaveConvex]](json).getOrElse(???)
+    val meta = if (new java.io.File(s"${fileName}.meta.data").exists) {
+      val json = FileUtils.read(s"${fileName}.meta.data")
+      decode[MetaData](json).getOrElse(???)
+    } else {
+      MetaData.empty
+    }
 
-    WItem(item, idx, name, concave)
+    WItem(item, idx, name, meta)
   }
 
 
-  def oneMatch(idx: Int) = {
+  def oneMatch(idx: Int)(implicit params: MatchParams) = {
     val r = Holder.r
     val m = r(idx)
 
     r.values.par.foreach { i =>
-      Matcher.tryMatch(m, i, s"${m.idx}_${i.idx}")(MatchParams.precise)
+      Matcher.tryMatch(m, i, s"${m.idx}_${i.idx}")
     }
   }
 
@@ -145,13 +149,13 @@ object Match {
   def concave(dir: String) = {
     read(dir).values.foreach { item =>
       println(item.name)
-      val concave = item.item.concave
-      FileUtils.write(s"${item.name}.concave", concave.asJson.noSpaces)
+      val metaData = item.item.metaData
+      FileUtils.write(s"${item.name}.data", metaData.asJson.noSpaces)
     }
   }
 }
 
-case class WItem(item: Item, idx: Int, name: String, concave: List[ConcaveConvex]) {}
+case class WItem(item: Item, idx: Int, name: String, metaData: MetaData) {}
 
 case class Data(values: List[WItem]) {
   lazy val map = values.groupBy(_.idx).mapValues(_.head)
