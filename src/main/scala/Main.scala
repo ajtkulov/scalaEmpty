@@ -2,8 +2,6 @@ package main
 
 import com.jujutsu.tsne.barneshut.ParallelBHTsne
 
-import scala.util.Random
-
 
 object Main extends App {
 
@@ -22,13 +20,6 @@ object Main extends App {
     import com.jujutsu.utils.TSneUtils
 
     val X: Array[Array[Double]] = read("/Users/pavel/code/T-SNE-Java/tsne-demos/src/main/resources/datasets/mnist2500_X.txt")
-
-    val r = new Random()
-
-    for {
-      i <- 0 until 2500
-      j <- 0 until 100
-    } X(i)(j) = r.nextDouble()
 
     val config = TSneUtils.buildConfig(X, 3, 55, 20, 1000)
 
