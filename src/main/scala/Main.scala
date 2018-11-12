@@ -26,7 +26,8 @@ case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    Match.concave("/Users/pavel/code/scalaEmpty/center")
+//    Match.concave("/Users/pavel/code/scalaEmpty/center")
+    Match.mark("/Users/pavel/code/puzzleInput/centred")
   }
 
   def manual(input: String) = {
@@ -85,150 +86,6 @@ object Main extends App {
   }
 }
 
-object Matcher {
-  def basicMatch(fst: WItem, snd: WItem)(implicit params: MatchParams): List[(Int, Int)] = {
-    val res = for {
-      f <- 0 until 4
-      s <- 0 until 4
-      ff = fst.item.distance(f)
-      ss = snd.item.distance(s)
-      delta = Math.abs(ff - ss) / ff
-      if delta < params.sizeDiff
-      c1 = fst.metaData.concave(f)
-      c2 = snd.metaData.concave(s)
-      if c1.convex ^ c2.convex
-      if Math.abs(c1.size - c2.size) < params.diffInConvex
-    } yield (f, s)
-
-    res.toList
-  }
-
-  def tryMatch(fw: WItem, sw: WItem, suff: String)(implicit params: MatchParams) = {
-    val res = ArrayBuffer[(String, String)]()
-
-    val fst = fw.item
-    val snd = sw.item
-
-    for {
-      f <- 0 until 4
-      s <- 0 until 4
-      ff = fst.distance(f)
-      ss = snd.distance(s)
-      delta = Math.abs(ff - ss) / ff
-      if delta < params.sizeDiff
-      c1 = fw.metaData.concave(f)
-      c2 = sw.metaData.concave(s)
-      if c1.convex ^ c2.convex
-      if Math.abs(c1.size - c2.size) < params.diffInConvex
-    } {
-      val line1 = fst.line2(f)
-      val line2 = snd.line2(s)
-
-      val r1 = rotationAngle(line1.fst, line1.snd)
-      val newC1 = c1.center.rotate(fst.center, -r1)
-
-      val nline1 = line1.rotate(fst.center, -r1)
-
-      val r2 = rotationAngle(line2.fst, line2.snd) + Math.PI
-      val newC2 = c2.center.rotate(snd.center, -r2)
-
-      val nline2 = line2.rotate(snd.center, -r2)
-
-      val nnC1 = Pos(1024, 1024) - nline1.fst.toPos + newC1
-      val nnC2 = Pos(1024, 1024) - nline2.snd.toPos + newC2
-
-      val dd = Coor.distance(nnC1.toCoor, nnC2.toCoor)
-      if (dd < 10) {
-        val fstRotated = rotate(fst, r1, fst.center)
-        val sndRotated = rotate(snd, r2, snd.center)
-        val out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
-
-        shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
-        val err = shift(sndRotated, out, nline2.snd.toPos, Pos(1024, 1024))
-
-        val space = errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)
-
-        val mm = s"_${f}_${s}"
-        if (err < params.error && space < params.space) {
-          val rr =
-            s"""
-               |$suff$mm
-               |intersect: $err; space: ${space}; delta: ${delta}
-               |centerDiff: $dd
-               |sizes: ${c1.size} ${c2.size}
-            """.stripMargin
-
-          val output = s"${suff}${mm}.jpg"
-          ImageIO.write(out, "png", new File(output))
-          res.append((output, rr))
-        }
-      }
-    }
-
-    res.toList
-  }
-
-  def errorSpace(f: BufferedImage, width: Int): Int = {
-    var err = 0
-    for {
-      x <- 1024 + 15 to 1024 + width - 15
-      y <- 1024 - 110 to 1024 + 110
-    } {
-      if (isEmpty(f.getColor(x, y))) {
-        f.setRGB(x, y, 0x004400)
-        err = err + 1
-      }
-    }
-
-    err
-  }
-
-  def shift(source: BufferedImage, dest: BufferedImage, sourcePos: Pos, destPos: Pos): Int = {
-    var err = 0
-    val delta = destPos - sourcePos
-    for {
-      x <- 0 until source.getWidth
-      y <- 0 until source.getHeight
-    } {
-      val c = source.getRGB(x, y)
-      val cc = source.getColor(x, y)
-      val n = Pos(x, y) + delta
-      if (dest.isInside(n)) {
-        if (nonEmpty(dest.getColor(n.x, n.y))) {
-          if (nonEmpty(cc)) {
-            err = err + 1
-            dest.setRGB(n.x, n.y, 0x00ffff)
-          }
-        } else {
-          dest.setRGB(n.x, n.y, c)
-        }
-      }
-    }
-    err
-  }
-
-  def center(f: BufferedImage, center: Pos): (BufferedImage, Pos) = {
-    val ff = new BufferedImage(f.getWidth, f.getHeight, BufferedImage.TYPE_INT_RGB)
-
-    val c = Pos(f.getWidth / 2, f.getHeight / 2)
-
-    val delta = c - center
-
-    for {
-      x <- 0 until f.getWidth
-      y <- 0 until f.getHeight
-    } {
-      val pos = Pos(x, y)
-      val on = pos - delta
-      if (f.isInside(on)) {
-        ff.setRGB(x, y, f.getRGB(on.x, on.y))
-      }
-    }
-
-    (ff, c)
-  }
-
-}
 
 trait LineOrder {
   def bools: Image[Boolean]
@@ -872,17 +729,9 @@ object Handler {
     Math.atan2(snd.y - fst.y, snd.x - fst.x)
   }
 
-  def rotate(f: Item, angle: Double, center: Pos): BufferedImage = {
-    val qq = f.f
+  def rotate(f: WItem, angle: Double, center: Pos): BufferedImage = {
+    val qq = f.item.f
     val ff = new BufferedImage(qq.getWidth, qq.getHeight, BufferedImage.TYPE_INT_RGB)
-
-    //    f.bools.bfs(f.center, identity, Some {
-    //      pos =>
-    //        val newPos = pos.rotate(center, angle)
-    //        if (qq.isInside(newPos)) {
-    //          ff.setRGB(newPos.x, newPos.y, qq.getRGB(pos.x, pos.y))
-    //        }
-    //    })
 
     for {
       x <- 0 until qq.getWidth

@@ -17,7 +17,7 @@ import scala.concurrent.duration._
 import scala.util._
 
 object Holder {
-  lazy val r: Data = read("/Users/pavel/puzzle/center")
+  lazy val r: Data = read("/Users/pavel/code/puzzleInput/centred")
 }
 
 object WebServer {

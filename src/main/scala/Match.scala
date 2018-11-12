@@ -9,15 +9,14 @@ import io.circe.parser.decode
 import some.Holder
 
 object Match {
-  def readFiles(dir: String): List[(String, Int, String)] = {
-    FileUtils.dir(dir).filter(x => x.getName.endsWith(".meta")).map { x =>
+  def readFiles(dir: String, size: Int = Int.MaxValue): List[(String, Int, String)] = {
+    FileUtils.dir(dir).filter(x => x.getName.endsWith(".meta")).take(size).map { x =>
       (x.getAbsolutePath.dropRight(5), (x.getName.substring(4, 8) + x.getName.substring(13, 14)).toInt, x.getName)
     }
   }
 
-
-  def read(dir: String): Data = {
-    val res = readFiles(dir).par.map { x =>
+  def read(dir: String, size: Int = Int.MaxValue): Data = {
+    val res = readFiles(dir, size).par.map { x =>
       println(x)
       readWItem(x._1, x._2, x._3)
     }.toList
@@ -37,13 +36,23 @@ object Match {
     WItem(item, idx, name, meta)
   }
 
-
   def oneMatch(idx: Int)(implicit params: MatchParams) = {
     val r = Holder.r
     val m = r(idx)
 
     r.values.par.foreach { i =>
       Matcher.tryMatch(m, i, s"${m.idx}_${i.idx}")
+    }
+  }
+
+  def oneMatch(idx: Int, edge: Int)(implicit params: MatchParams) = {
+    val r = Holder.r
+    val m = r(idx)
+
+    r.values.par.foreach { i =>
+      for (edgeIdx <- 0 until 4) {
+        Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
+      }
     }
   }
 
@@ -121,7 +130,7 @@ object Match {
         if (z.nonEmpty) {
           val z1 = Matcher.tryMatch(other, s, s"${other.idx}_${s.idx}")(params)
           if (z1.isEmpty) {
-            z.foreach(fileName => new File(fileName._1).delete())
+            z.foreach(fileName => new File(fileName.get._1).delete())
           } else {
             println(other.idx)
             r = r + 1
@@ -151,6 +160,21 @@ object Match {
       println(item.name)
       val metaData = item.item.metaData
       FileUtils.write(s"${item.name}.data", metaData.asJson.noSpaces)
+    }
+  }
+
+  def mark(dir: String) = {
+    read(dir).values.foreach { item =>
+      val img = item.item.f
+      for (idx <- 0 until 4) {
+        val line = item.item.line2(idx)
+        val pos = ((line.snd + line.fst) * 0.5).toPos
+        for (i <- 1 to idx + 1) {
+          Handler.mutate(img, pos + Pos(i * 12, 0), size = 10, 0xffff00)
+        }
+      }
+
+      ImageIO.write(img, "png", new File(s"${item.name}.mark.jpg"))
     }
   }
 }
