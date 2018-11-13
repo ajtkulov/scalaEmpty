@@ -26,13 +26,14 @@ object Matcher {
     res.toList
   }
 
-  def tryOne(fw: WItem, sw: WItem, suff: String, fIdx: Int, sIdx: Int)(implicit params: MatchParams): Option[(String, String)] = {
+  def tryOne(fw: WItem, sw: WItem, suff: String, fIdx: Int, sIdx: Int)(implicit params: MatchParams, mat: Mat): Option[(String, String)] = {
     val fst = fw.item
     val snd = sw.item
 
     for {
       f <- Some(fIdx)
       s <- Some(sIdx)
+      if mat.mat(fw, sw)
       ff = fst.distance(f)
       ss = snd.distance(s)
       delta = Math.abs(ff - ss) / ff
@@ -56,7 +57,7 @@ object Matcher {
       nnC2 = Pos(1024, 1024) - nline2.snd.toPos + newC2
 
       dd = Coor.distance(nnC1.toCoor, nnC2.toCoor)
-      if dd < 10
+      if dd < params.distConv
 
       fstRotated = rotate(fw, r1, fst.center)
       sndRotated = rotate(sw, r2, snd.center)
@@ -84,7 +85,7 @@ object Matcher {
     }
   }
 
-  def tryMatch(fw: WItem, sw: WItem, suff: String)(implicit params: MatchParams) = {
+  def tryMatch(fw: WItem, sw: WItem, suff: String)(implicit params: MatchParams, mat: Mat) = {
     for {
       f <- 0 until 4
       s <- 0 until 4
@@ -95,7 +96,7 @@ object Matcher {
     var err = 0
     for {
       x <- 1024 + 15 to 1024 + width - 15
-      y <- 1024 - 110 to 1024 + 110
+      y <- 1024 - 90 to 1024 + 90
     } {
       if (isEmpty(f.getColor(x, y))) {
         f.setRGB(x, y, 0x004400)
@@ -151,4 +152,23 @@ object Matcher {
     (ff, c)
   }
 
+}
+
+trait Mat {
+  def mat(fst: WItem, snd: WItem): Boolean
+}
+
+object RealMatcher extends Mat {
+  lazy val map: Map[String, Set[Int]] = scala.io.Source.fromFile("mark.txt").getLines().map { line =>
+    val split = line.split(" ")
+    (split.head.dropRight(3), split.last.toList.map(_.toInt).toSet)
+  }.toMap
+
+  def mat(fst: WItem, snd: WItem): Boolean = {
+    map(fst.name.dropRight(4)).intersect(map(snd.name.dropRight(4))).nonEmpty
+  }
+}
+
+object FakeMatcher extends Mat {
+  def mat(fst: WItem, snd: WItem): Boolean = true
 }

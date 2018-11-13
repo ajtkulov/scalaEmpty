@@ -9,7 +9,7 @@ import akka.stream.ActorMaterializer
 import akka.http.scaladsl.server.Directives._
 import akka.pattern._
 import akka.util.Timeout
-import main.{Data, Match, MatchParams}
+import main.{Data, FakeMatcher, Match, MatchParams}
 import main.Match.read
 
 import scala.concurrent.Future
@@ -34,7 +34,7 @@ object WebServer {
         get {
           parameters('idx.as[Int]) { idx =>
             onComplete(Future {
-              Match.oneMatch(idx)(MatchParams.precise)
+              Match.oneMatch(idx)(MatchParams.precise, FakeMatcher)
             }) {
               case Success(_) => complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "done"))
               case Failure(value) => complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, value.toString()))
@@ -46,7 +46,7 @@ object WebServer {
         get {
           parameters('idx.as[Int]) { idx =>
             onComplete(Future {
-              Match.oneMatch(idx)(MatchParams.standard)
+              Match.oneMatch(idx)(MatchParams.standard, FakeMatcher)
             }) {
               case Success(_) => complete(HttpEntity(ContentTypes.`text/plain(UTF-8)`, "done"))
               case Failure(value) => complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, value.toString()))

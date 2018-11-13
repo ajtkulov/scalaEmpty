@@ -317,14 +317,16 @@ object MathUtils {
 
 case class Params(eps: Double, threshold: Double, radius: Double) {}
 
-case class MatchParams(sizeDiff: Double, error: Int, space: Int, diffInConvex: Int) {}
+case class MatchParams(sizeDiff: Double, error: Int, space: Int, diffInConvex: Int, distConv: Int) {}
 
 object MatchParams {
-  val precise = MatchParams(0.025, 2000, 350, 800)
+  val precise = MatchParams(0.025, 2000, 350, 800, 10)
 
-  val standard = MatchParams(0.05, 2000, 1500, 1500)
+  val standard = MatchParams(0.05, 2000, 1500, 1500, 10)
 
-  val medium = MatchParams(0.035, 2000, 1200, 1200)
+  val wide = MatchParams(0.05, 3000, 2500, 2500, 15)
+
+  val medium = MatchParams(0.035, 2000, 1200, 1200, 10)
 }
 
 class Image[C](values: Array[Array[C]]) {

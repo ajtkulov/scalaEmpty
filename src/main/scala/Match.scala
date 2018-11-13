@@ -36,7 +36,7 @@ object Match {
     WItem(item, idx, name, meta)
   }
 
-  def oneMatch(idx: Int)(implicit params: MatchParams) = {
+  def oneMatch(idx: Int)(implicit params: MatchParams, mat: Mat) = {
     val r = Holder.r
     val m = r(idx)
 
@@ -45,7 +45,7 @@ object Match {
     }
   }
 
-  def oneMatch(idx: Int, edge: Int)(implicit params: MatchParams) = {
+  def oneMatch(idx: Int, edge: Int)(implicit params: MatchParams, mat: Mat) = {
     val r = Holder.r
     val m = r(idx)
 
@@ -115,7 +115,7 @@ object Match {
 //    both(16081, 14872, data)(MatchParams.standard)
   }
 
-  def both(fst: Int, snd: Int, data: Data)(implicit params: MatchParams) = {
+  def both(fst: Int, snd: Int, data: Data)(implicit params: MatchParams, mat: Mat) = {
     val f = data(fst)
     val s = data(snd)
     var r = 0
@@ -126,9 +126,9 @@ object Match {
       val s1 = Matcher.basicMatch(s, other)
       if (f1.nonEmpty && s1.nonEmpty && (f1.map(_._2) ++ s1.map(_._2)).distinct.size > 1) {
 
-        val z = Matcher.tryMatch(other, f, s"${other.idx}_${f.idx}")(params)
+        val z = Matcher.tryMatch(other, f, s"${other.idx}_${f.idx}")
         if (z.nonEmpty) {
-          val z1 = Matcher.tryMatch(other, s, s"${other.idx}_${s.idx}")(params)
+          val z1 = Matcher.tryMatch(other, s, s"${other.idx}_${s.idx}")
           if (z1.isEmpty) {
             z.foreach(fileName => new File(fileName.get._1).delete())
           } else {
