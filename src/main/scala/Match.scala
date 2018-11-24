@@ -6,7 +6,6 @@ import javax.imageio.ImageIO
 import io.circe.syntax._
 import ItemStored._
 import io.circe.parser.decode
-import some.Holder
 
 object Match {
   def readFiles(dir: String, size: Int = Int.MaxValue): List[(String, Int, String)] = {
@@ -15,7 +14,7 @@ object Match {
     }
   }
 
-  def read(dir: String, size: Int = Int.MaxValue): Data = {
+  def readData(dir: String, size: Int = Int.MaxValue): Data = {
     val res = readFiles(dir, size).par.map { x =>
       println(x)
       readWItem(x._1, x._2, x._3)
@@ -104,13 +103,13 @@ object Match {
   }
 
   def dd() = {
-    val data = read("/Users/pavel/puzzle/center")
+    val data = readData("/Users/pavel/puzzle/center")
     double(16110, 16081, data)(MatchParams.precise)
   }
 
   def main1(): Unit = {
 
-    val data = read("/Users/pavel/puzzle/center")
+    val data = readData("/Users/pavel/puzzle/center")
     //    both(16081, 14872, data)(MatchParams.precise)
 //    both(16081, 14872, data)(MatchParams.standard)
   }
@@ -156,7 +155,7 @@ object Match {
   }
 
   def concave(dir: String) = {
-    read(dir).values.foreach { item =>
+    readData(dir).values.foreach { item =>
       println(item.name)
       val metaData = item.item.metaData
       FileUtils.write(s"${item.name}.data", metaData.asJson.noSpaces)
@@ -164,7 +163,7 @@ object Match {
   }
 
   def mark(dir: String) = {
-    read(dir).values.foreach { item =>
+    readData(dir).values.foreach { item =>
       val img = item.item.f
       for (idx <- 0 until 4) {
         val line = item.item.line2(idx)

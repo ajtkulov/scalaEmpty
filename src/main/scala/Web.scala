@@ -1,4 +1,4 @@
-package some
+package main
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
@@ -9,15 +9,14 @@ import akka.stream.ActorMaterializer
 import akka.http.scaladsl.server.Directives._
 import akka.pattern._
 import akka.util.Timeout
-import main.{Data, FakeMatcher, Match, MatchParams}
-import main.Match.read
+import main.Match.readData
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util._
 
 object Holder {
-  lazy val r: Data = read("/Users/pavel/code/puzzleInput/centred")
+  lazy val r: Data = readData("/Users/pavel/code/puzzleInput/centred")
 }
 
 object WebServer {

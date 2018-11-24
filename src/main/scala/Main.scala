@@ -21,6 +21,8 @@ import io.circe.generic.auto._
 import ItemStored._
 import io.circe.parser.decode
 import Matcher._
+import javax.swing.JPanel
+import Match.readData
 
 case class Color(r: Int, g: Int, b: Int) {}
 
@@ -28,6 +30,55 @@ object Main extends App {
   override def main(args: Array[String]): Unit = {
 //    Match.concave("/Users/pavel/code/scalaEmpty/center")
     Match.mark("/Users/pavel/code/puzzleInput/centred")
+  }
+
+  def drawItems() = {
+    val in = Holder.r.values.take(300).map(x => (x.item.f, x.idx.toString))
+
+    val rr = draw(in, Pos(150, 150), Pos(850, 850), 5, 10)
+
+    ImageIO.write(rr, "png", new File("out.jpg"))
+  }
+
+  def draw(values: List[(BufferedImage, String)], posLU: Pos, posRB: Pos, scale: Int, perRow: Int): BufferedImage = {
+
+    var r = 0
+    var c = 0
+
+    val rows = (values.size / perRow).ceil.toInt + 1
+
+
+    val z: Pos = ((posRB - posLU).toCoor * (1.0 / scale)).toPos
+
+    val res = new BufferedImage(z.x * perRow + 30, z.y * rows + 30, BufferedImage.TYPE_INT_RGB)
+
+    val g2d = res.createGraphics()
+
+    for (idx <- values.indices) {
+
+      val (img, text) = values(idx)
+      for {
+        x <- posLU.x until posRB.x by scale
+        y <- posLU.y until posRB.y by scale
+      } {
+
+        val xx = (x - posLU.x) / scale
+        val yy = (y - posLU.y) / scale
+
+        res.setRGB(c * z.x + xx, r * z.y + yy, img.getRGB(x, y))
+      }
+      g2d.drawString(text, c * z.x, r * z.y + 10)
+
+      c = c + 1
+      if (c == perRow) {
+        c = 0
+        r = r + 1
+      }
+    }
+
+    g2d.dispose()
+
+    res
   }
 
   def manual(input: String) = {
@@ -269,6 +320,8 @@ case class Pos(x: Int, y: Int) {
   def +(other: Pos): Pos = Pos(x + other.x, y + other.y)
 
   def -(other: Pos): Pos = Pos(x - other.x, y - other.y)
+
+  def *(scale: Int): Pos = Pos(x * scale, y * scale)
 
   def toCoor = Coor(x, y)
 
@@ -525,6 +578,7 @@ object Handler {
   }
 
   def mutate(f: BufferedImage, pos: Pos, size: Int = 10, color: Int = 0xff0000) = {
+    assert(size < 1000)
     for {
       x <- 0 to size
       y <- 0 to size
