@@ -29,7 +29,16 @@ case class Color(r: Int, g: Int, b: Int) {}
 object Main extends App {
   override def main(args: Array[String]): Unit = {
 //    Match.concave("/Users/pavel/code/scalaEmpty/center")
-    Match.mark("/Users/pavel/code/puzzleInput/centred")
+//    Match.mark("/Users/pavel/code/puzzleInput/centred")
+    drawAll()
+  }
+
+  def drawAll() = {
+    val in = FileUtils.dir(".").filter(_.getName.contains("_")).filter(_.getName.contains(".jpg")).toParArray.map(x => (read(x.getName), x.getName.substring(6, 11))).toList.sortBy(_._2)
+
+    val rr = draw(in, Pos(800, 650), Pos(1400, 1600), 3, 5)
+
+    ImageIO.write(rr, "png", new File("out.jpg"))
   }
 
   def drawItems() = {
