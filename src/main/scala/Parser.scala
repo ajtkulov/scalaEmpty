@@ -1,7 +1,6 @@
 package info.folone.ddl
 
 import scala.util.parsing.combinator._
-import scala.util.parsing.combinator.syntactical._
 
 object DDLParser extends JavaTokenParsers {
   val tableName = """(?!(?i)KEY)(?!(?i)PRIMARY)(?!(?i)UNIQUE)(`)?[a-zA-Z_0-9]+(`)?""".r
@@ -28,8 +27,7 @@ object DDLParser extends JavaTokenParsers {
 
   final case class PrimaryKey(column: String) extends Constraint
 
-  final case class ForeignKey(name: String, column: String, foreignTable: String,
-                              foreignColumn: String) extends Constraint
+  final case class ForeignKey(name: String, column: String, foreignTable: String, foreignColumn: String) extends Constraint
 
   final case class Key(name: Option[String], column: String) extends Constraint
 
@@ -89,13 +87,15 @@ object DDLParser extends JavaTokenParsers {
     }
   }
 
-  def dropTable = "(?i)DROP TABLE" ~ tableName
+  def dropTable = "(?i)DROP TABLE".r ~ ("IF EXISTS".r ?) ~ tableName
 
-  def statement = (createTable | dropTable) ~ statementTermination ^^ {
+  def lockTable = "(?i)LOCK TABLES".r ~ tableName ~ "WRITE"
+
+  def statement = (createTable | dropTable | lockTable) ~ statementTermination ^^ {
     case res ~ _ => res
   }
 
   def program = statement *
 
-  def parse(sql: String) = parseAll(program, sql) map (_.toSet)
+  def parse(sql: String) = parseAll(program, sql.split("\n").filterNot(_.startsWith("--")).mkString("\n")) map (_.toSet)
 }
