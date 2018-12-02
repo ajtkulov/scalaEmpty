@@ -7,7 +7,7 @@ object DDLParser extends JavaTokenParsers {
   val tableName = """(?!(?i)KEY)(?!(?i)PRIMARY)(?!(?i)UNIQUE)(`)?[a-zA-Z_0-9]+(`)?""".r
   val columnName = tableName
   val indexName = tableName
-  val default = """[a-zA-Z'\(\)[0-9]]+""".r
+  val default = """[_a-zA-Z'\(\)[0-9]]+""".r
   val keyName = tableName
   val engine = tableName
   val charset = tableName
@@ -40,15 +40,16 @@ object DDLParser extends JavaTokenParsers {
     """(\s|#.*|(?m)/\*(\*(?!/)|[^*])*\*/;*)+""".r
 
   def column = columnName ~ dataType ~
-    ((("""CHARACTER SET""".r) ~ default) ?) ~
+    ((("""CHARACTER SET""".r) ~ default ~ (("COLLATE".r ~ default)?)) ?) ~
     ("""unsigned""".r ?) ~
     ("""(?i)NOT NULL""".r ?) ~
     ("""(?i)AUTO_INCREMENT""".r ?) ~
     ((("""(?i)DEFAULT""".r) ~ default) ?) ~
+    (("COMMENT".r ~ quotedStr)?) ~
     columnDelimiter
 
   def uniqueOrPk = ("""(?i)(PRIMARY|UNIQUE)""".r ?) ~ ("""(?i)KEY""".r) ~
-    (keyName ?) ~ "(" ~ columnName ~ ((columnDelimiter ~ columnName) *) ~ ")" ~ ("USING HASH".r ?) ~ columnDelimiter ^^ {
+    (keyName ?) ~ "(" ~ columnName ~ ((columnDelimiter ~ columnName) *) ~ ")" ~ (("USING".r ~ default) ?) ~ columnDelimiter ^^ {
     case kind ~ _ ~ name ~ "(" ~ column ~ others ~ ")" ~ _ ~ _ =>
       kind match {
         case Some(x) if x.equalsIgnoreCase("primary") => PrimaryKey(column)
@@ -80,7 +81,7 @@ object DDLParser extends JavaTokenParsers {
     "(" ~ (column *) ~ (constraint *) ~ ")" ~ (tableMetaInfo ?) ^^ {
     case _ ~ _ ~ name ~ "(" ~ columns ~ constraints ~ ")" ~ meta => {
       val columnsData = columns map {
-        case colName ~ colType ~ charSet ~ unsigned ~ notNull ~ autoInc ~ isDefault ~ _ =>
+        case colName ~ colType ~ charSet ~ unsigned ~ notNull ~ autoInc ~ isDefault ~ _ ~ _ =>
           Column(cleanString(colName), colType, notNull.isDefined,
             autoInc.isDefined, isDefault.map(_._2))
       }
