@@ -6,41 +6,42 @@ object Main extends App {
   override def main(args: Array[String]): Unit = {
     val res = DDLParser.parse(
       """
-        |CREATE TABLE `external_tx` (
-        |  `ext_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
-        |  `tracking_id` varchar(40) CHARACTER SET latin1 COLLATE latin1_general_cs NOT NULL,
-        |  `source` tinyint(4) NOT NULL,
-        |  `tx_type` tinyint(3) NOT NULL,
-        |  `state` tinyint(3) NOT NULL,
-        |  `amount` decimal(10,4) DEFAULT NULL,
-        |  `currency` varchar(3) NOT NULL DEFAULT 'USD',
-        |  `external_tx_id` varchar(60) CHARACTER SET latin1 COLLATE latin1_general_cs DEFAULT NULL,
-        |  `sender_email` varchar(255) DEFAULT NULL,
-        |  `fee` decimal(8,4) DEFAULT NULL,
-        |  `stamp` datetime NOT NULL,
-        |  `message` varchar(255) DEFAULT NULL,
-        |  `refund_external_tx_id` varchar(60) DEFAULT NULL,
-        |  `refund_state` smallint(6) NOT NULL DEFAULT '0',
-        |  `payment_provider_configuration_id` int(10) unsigned NOT NULL,
-        |  `tax_amount` decimal(10,4) DEFAULT NULL,
-        |  `sales_tax_rate_id` int(10) unsigned DEFAULT NULL,
-        |  `pre_tax_amount` decimal(10,4) NOT NULL,
-        |  `refunded_amount` decimal(10,4) DEFAULT NULL,
-        |  `error_context` mediumtext,
-        |  `rate` decimal(10,4) DEFAULT NULL,
-        |  `tax_provider_configuration_id` int(10) unsigned DEFAULT NULL,
-        |  `is_manually_refunded` tinyint(4) NOT NULL DEFAULT '0',
-        |  `refunded_tax_amount` decimal(10,4) DEFAULT NULL,
-        |  `downstream_external_tx_id` varchar(60) CHARACTER SET latin1 DEFAULT NULL COMMENT 'Tx id in terminal processing system (e.g. for Paypal via Braintree - Paypal tx id). Regular external tx id could be just an intermediate tx id on high-level provider',
-        |  `refund_downstream_external_tx_id` varchar(60) CHARACTER SET latin1 DEFAULT NULL COMMENT 'Refund Tx id in terminal processing system (see also downstream_external_tx_id)',
-        |  PRIMARY KEY (`ext_id`),
-        |  UNIQUE KEY `IX_TRACKING_ID` (`tracking_id`),
-        |  UNIQUE KEY `IX_EXTERNAL_TX_ID` (`external_tx_id`),
-        |  KEY `IDX_STATE` (`state`),
-        |  KEY `IDX_SOURCE` (`source`),
-        |  KEY `IDX_SENDER_EMAIL` (`sender_email`) USING BTREE,
-        |  KEY `IDX_UPI_PPC` (`payment_provider_configuration_id`)
-        |) ENGINE=InnoDB AUTO_INCREMENT=118915 DEFAULT CHARSET=utf8;
+        |DROP TABLE IF EXISTS `external_api_configuration`;
+        |/*!40101 SET @saved_cs_client     = @@character_set_client */;
+        |/*!40101 SET character_set_client = utf8 */;
+        |CREATE TABLE `external_api_configuration` (
+        |  `external_api_configuration_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+        |  `pub_id` varchar(12) NOT NULL,
+        |  `app_id` int(10) unsigned NOT NULL,
+        |  `name` varchar(70) CHARACTER SET utf8mb4 NOT NULL,
+        |  `description` mediumtext CHARACTER SET utf8mb4,
+        |  `fields` mediumtext CHARACTER SET utf8 NOT NULL,
+        |  `properties` mediumtext CHARACTER SET utf8 NOT NULL,
+        |  `create_date` datetime NOT NULL,
+        |  `create_by` int(10) unsigned NOT NULL,
+        |  `update_date` datetime DEFAULT NULL,
+        |  `update_by` int(10) unsigned NOT NULL,
+        |  `external_api_source` int(11) NOT NULL,
+        |  `deleted` smallint(6) DEFAULT '0',
+        |  `enforce_uniqueness` tinyint(1) NOT NULL DEFAULT '0',
+        |  PRIMARY KEY (`external_api_configuration_id`),
+        |  KEY `IDX_EXT_CONF_APP` (`app_id`),
+        |  KEY `IDX_EXT_ACC_PUB_INDEX` (`pub_id`)
+        |) ENGINE=InnoDB AUTO_INCREMENT=172 DEFAULT CHARSET=latin1;
+        |/*!40101 SET character_set_client = @saved_cs_client */;
+        |
+        |--
+        |-- Dumping data for table `external_api_configuration`
+        |--
+        |
+        |LOCK TABLES `external_api_configuration` WRITE;
+        |
+        |
+        |LOCK TABLES `external_api_configuration` WRITE;
+        |/*!40000 ALTER TABLE `external_api_configuration` DISABLE KEYS */;
+        |INSERT INTO `external_api_configuration` VALUES (1,'EAYQD40JCG1X',4334,'asdf','asdf','[{\"fieldName\":\"receiptData\",\"fieldTitle\":\"Receipt data\",\"description\":\"App store receipt\",\"mandatory\":true,\"hidden\":false,\"defaultValue\":null,\"order\":0}]','{\"password\":\"asdf\",\"appStoreReceiptUrl\":\"asdfasdf\"}','2015-11-05 01:59:57',18944,'2015-11-05 01:59:57',18944,3,0,0),(170,'EAHKYC5SY7DC',4298,'TEST 1234',NULL,'[{\"fieldName\":\"qwsa\",\"fieldTitle\":\"qwerty\",\"description\":\"sdff\",\"mandatory\":true,\"hidden\":false,\"defaultValue\":\"1234\",\"order\":0,\"type\":null}]','{\"prodId\":\"122334545\"}','2016-11-08 03:59:44',15451,'2016-11-08 04:00:25',15451,1,0,0);
+        |/*!40000 ALTER TABLE `external_api_configuration` ENABLE KEYS */;
+        |UNLOCK TABLES;
       """.stripMargin)
     println(res)
   }

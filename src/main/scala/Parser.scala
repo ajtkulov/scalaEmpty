@@ -14,7 +14,7 @@ object DDLParser extends JavaTokenParsers {
   val statementTermination = ";"
   val columnDelimiter = """,*""".r
 
-  val quotedStr = """'([^\\']|\\')*'""".r
+  val quotedStr = """\'(\\.|[^\'])*\'""".r
 
   final case class Table(name: String, columns: Set[Column], constraints: Set[Constraint])
 
@@ -32,6 +32,16 @@ object DDLParser extends JavaTokenParsers {
   final case class Key(name: Option[String], column: String) extends Constraint
 
   def cleanString(str: String) = str.replaceAll("`", "")
+
+  sealed trait Value
+
+  final case class IntValue(value: Int) extends Value
+  final case class DoubleValue(value: Double) extends Value
+  final case class NullValue() extends Value
+  final case class StringValue(value: String) extends Value
+
+  case class Values(values: List[Value])
+  case class InsertValues(table: String, values: List[Values])
 
   // Handle comments
   protected override val whiteSpace =
@@ -74,7 +84,6 @@ object DDLParser extends JavaTokenParsers {
       """(?i)DEFAULT CHARSET=""".r ~ charset ~
       (("""COMMENT=""".r ~ quotedStr)?)
 
-
   def createTable = ("""(?i)CREATE TABLE""".r) ~ ("""(?i)IF NOT EXISTS""".r ?) ~ tableName ~
     "(" ~ (column *) ~ (constraint *) ~ ")" ~ (tableMetaInfo ?) ^^ {
     case _ ~ _ ~ name ~ "(" ~ columns ~ constraints ~ ")" ~ meta => {
@@ -91,7 +100,23 @@ object DDLParser extends JavaTokenParsers {
 
   def lockTable = "(?i)LOCK TABLES".r ~ tableName ~ "WRITE"
 
-  def statement = (createTable | dropTable | lockTable) ~ statementTermination ^^ {
+  def nullValue: DDLParser.Parser[Value] = "NULL".r ^^ (_ => NullValue())
+  def decimalValue: DDLParser.Parser[Value] = decimalNumber ^^ (value => if (value.contains(".")) DoubleValue(value.toDouble) else IntValue(value.toInt) )
+  def stringValue: DDLParser.Parser[Value] = quotedStr ^^ (value =>  StringValue(value))
+
+  def value: DDLParser.Parser[Value] = nullValue | decimalValue | stringValue ^^ identity
+
+  def argumentValues = "(" ~ value ~ (("," ~ value)*) ~ ")" ^^ {
+    case _ ~ value ~ values ~ _ => Values(List(value) ++ values.map(_._2))
+  }
+
+  def insertValues = "INSERT INTO".r ~ tableName ~ "VALUES".r ~ argumentValues ~ (("," ~ argumentValues)*) ^^ {
+    case _ ~ tableName ~ _ ~ arg ~ args => InsertValues(tableName, List(arg) ++ args.map(_._2))
+  }
+
+  def unlock = "UNLOCK TABLES".r
+
+  def statement = (createTable | dropTable | lockTable | insertValues | unlock) ~ statementTermination ^^ {
     case res ~ _ => res
   }
 
