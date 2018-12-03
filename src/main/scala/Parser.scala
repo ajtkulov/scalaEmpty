@@ -6,7 +6,7 @@ object DDLParser extends JavaTokenParsers {
   val tableName = """(?!(?i)KEY)(?!(?i)PRIMARY)(?!(?i)UNIQUE)(`)?[a-zA-Z_0-9]+(`)?""".r
   val columnName = tableName
   val indexName = tableName
-  val default = """[_a-zA-Z'\(\)[0-9]]+""".r
+  val default = """[_a-zA-Z/'\(\)[0-9]]+""".r
   val keyName = tableName
   val engine = tableName
   val charset = tableName
@@ -35,7 +35,7 @@ object DDLParser extends JavaTokenParsers {
 
   sealed trait Value
 
-  final case class IntValue(value: Int) extends Value
+  final case class IntValue(value: Long) extends Value
   final case class DoubleValue(value: Double) extends Value
   final case class NullValue() extends Value
   final case class StringValue(value: String) extends Value
@@ -50,6 +50,7 @@ object DDLParser extends JavaTokenParsers {
   def column = columnName ~ dataType ~
     ((("""CHARACTER SET""".r) ~ default ~ (("COLLATE".r ~ default)?)) ?) ~
     ("""unsigned""".r ?) ~
+    ("""(?i)NULL""".r ?) ~
     ("""(?i)NOT NULL""".r ?) ~
     ("""(?i)AUTO_INCREMENT""".r ?) ~
     ((("""(?i)DEFAULT""".r) ~ default) ?) ~
@@ -70,9 +71,12 @@ object DDLParser extends JavaTokenParsers {
     """(?i)CONSTRAINT""".r ~ keyName ~ """FOREIGN KEY""".r ~
       "(" ~ columnName ~ ")" ~
       """(?i)REFERENCES""".r ~
-      tableName ~ "(" ~ columnName ~ ")" ~ columnDelimiter ^^ {
+      tableName ~ "(" ~ columnName ~ ")" ~
+      (("ON DELETE NO ACTION ON UPDATE NO ACTION".r)?) ~
+      (("ON DELETE CASCADE ON UPDATE CASCADE".r)?) ~
+      columnDelimiter ^^ {
       case _ ~ keyName ~ _ ~ "(" ~ columnName ~ ")" ~ _ ~
-        tableName ~ "(" ~ extColumn ~ ")" ~ _ =>
+        tableName ~ "(" ~ extColumn ~ ")" ~ _ ~_ ~ _ =>
         ForeignKey(keyName, columnName, tableName, extColumn)
     }
 
@@ -88,7 +92,7 @@ object DDLParser extends JavaTokenParsers {
     "(" ~ (column *) ~ (constraint *) ~ ")" ~ (tableMetaInfo ?) ^^ {
     case _ ~ _ ~ name ~ "(" ~ columns ~ constraints ~ ")" ~ meta => {
       val columnsData = columns map {
-        case colName ~ colType ~ charSet ~ unsigned ~ notNull ~ autoInc ~ isDefault ~ _ ~ _ =>
+        case colName ~ colType ~ charSet ~ unsigned ~ nnull ~ notNull ~ autoInc ~ isDefault ~ _ ~ _ =>
           Column(cleanString(colName), colType, notNull.isDefined,
             autoInc.isDefined, isDefault.map(_._2))
       }
@@ -101,7 +105,7 @@ object DDLParser extends JavaTokenParsers {
   def lockTable = "(?i)LOCK TABLES".r ~ tableName ~ "WRITE"
 
   def nullValue: DDLParser.Parser[Value] = "NULL".r ^^ (_ => NullValue())
-  def decimalValue: DDLParser.Parser[Value] = decimalNumber ^^ (value => if (value.contains(".")) DoubleValue(value.toDouble) else IntValue(value.toInt) )
+  def decimalValue: DDLParser.Parser[Value] = floatingPointNumber ^^ (value => if (value.contains(".")) DoubleValue(value.toDouble) else IntValue(value.toLong) )
   def stringValue: DDLParser.Parser[Value] = quotedStr ^^ (value =>  StringValue(value))
 
   def value: DDLParser.Parser[Value] = nullValue | decimalValue | stringValue ^^ identity
@@ -114,9 +118,11 @@ object DDLParser extends JavaTokenParsers {
     case _ ~ tableName ~ _ ~ arg ~ args => InsertValues(tableName, List(arg) ++ args.map(_._2))
   }
 
+  def delimiter = "DELIMITER".r
+
   def unlock = "UNLOCK TABLES".r
 
-  def statement = (createTable | dropTable | lockTable | insertValues | unlock) ~ statementTermination ^^ {
+  def statement = (createTable | dropTable | lockTable | insertValues | unlock | delimiter | "".r) ~ statementTermination ^^ {
     case res ~ _ => res
   }
 
