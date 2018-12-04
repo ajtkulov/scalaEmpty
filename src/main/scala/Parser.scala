@@ -14,7 +14,7 @@ object DDLParser extends JavaTokenParsers {
   val statementTermination = ";"
   val columnDelimiter = """,*""".r
 
-  val quotedStr = """\'(\\.|[^\'])*\'""".r
+  val quotedStr = """\'(\\.|[^\'])*+\'""".r
 
   final case class Table(name: String, columns: Set[Column], constraints: Set[Constraint])
 
@@ -53,13 +53,13 @@ object DDLParser extends JavaTokenParsers {
     ("""(?i)NULL""".r ?) ~
     ("""(?i)NOT NULL""".r ?) ~
     ("""(?i)AUTO_INCREMENT""".r ?) ~
-    ((("""(?i)DEFAULT""".r) ~ default) ?) ~
+    ((("""(?i)DEFAULT""".r) ~ (quotedStr | default)) ?) ~
     (("COMMENT".r ~ quotedStr)?) ~
     columnDelimiter
 
   def uniqueOrPk = ("""(?i)(PRIMARY|UNIQUE)""".r ?) ~ ("""(?i)KEY""".r) ~
-    (keyName ?) ~ "(" ~ columnName ~ ((columnDelimiter ~ columnName) *) ~ ")" ~ (("USING".r ~ default) ?) ~ columnDelimiter ^^ {
-    case kind ~ _ ~ name ~ "(" ~ column ~ others ~ ")" ~ _ ~ _ =>
+    (keyName ?) ~ "(" ~ columnName ~ (("\\([0-9]+\\)".r)?) ~ ((columnDelimiter ~ columnName) *) ~ ")" ~ (("USING".r ~ default) ?) ~ columnDelimiter ^^ {
+    case kind ~ _ ~ name ~ "(" ~ column ~ _ ~ others ~ ")" ~ _ ~ _ =>
       kind match {
         case Some(x) if x.equalsIgnoreCase("primary") => PrimaryKey(column)
         case Some(x) if x.equalsIgnoreCase("unique") => UniqueKey(name, column)
@@ -74,9 +74,10 @@ object DDLParser extends JavaTokenParsers {
       tableName ~ "(" ~ columnName ~ ")" ~
       (("ON DELETE NO ACTION ON UPDATE NO ACTION".r)?) ~
       (("ON DELETE CASCADE ON UPDATE CASCADE".r)?) ~
+      (("ON UPDATE CURRENT_TIMESTAMP".r)?) ~
       columnDelimiter ^^ {
       case _ ~ keyName ~ _ ~ "(" ~ columnName ~ ")" ~ _ ~
-        tableName ~ "(" ~ extColumn ~ ")" ~ _ ~_ ~ _ =>
+        tableName ~ "(" ~ extColumn ~ ")" ~ _ ~ _ ~_ ~ _ =>
         ForeignKey(keyName, columnName, tableName, extColumn)
     }
 
@@ -86,6 +87,7 @@ object DDLParser extends JavaTokenParsers {
     """(?i)ENGINE=""".r ~ engine ~
       ("AUTO_INCREMENT=[0-9]+".r ?) ~
       """(?i)DEFAULT CHARSET=""".r ~ charset ~
+      (("""COLLATE=""".r ~ default)?) ~
       (("""COMMENT=""".r ~ quotedStr)?)
 
   def createTable = ("""(?i)CREATE TABLE""".r) ~ ("""(?i)IF NOT EXISTS""".r ?) ~ tableName ~
