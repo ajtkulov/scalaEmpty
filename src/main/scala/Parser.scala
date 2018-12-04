@@ -54,6 +54,7 @@ object DDLParser extends JavaTokenParsers {
     ("""(?i)NOT NULL""".r ?) ~
     ("""(?i)AUTO_INCREMENT""".r ?) ~
     ((("""(?i)DEFAULT""".r) ~ (quotedStr | default)) ?) ~
+    ("""(?i)ON UPDATE CURRENT_TIMESTAMP""".r ?) ~
     (("COMMENT".r ~ quotedStr)?) ~
     columnDelimiter
 
@@ -69,15 +70,15 @@ object DDLParser extends JavaTokenParsers {
 
   def fk =
     """(?i)CONSTRAINT""".r ~ keyName ~ """FOREIGN KEY""".r ~
-      "(" ~ columnName ~ ")" ~
+      "(" ~ columnName ~ ((("," ~ columnName)*)?) ~ ")" ~
       """(?i)REFERENCES""".r ~
-      tableName ~ "(" ~ columnName ~ ")" ~
+      tableName ~ "(" ~ columnName ~ ((("," ~ columnName)*)?) ~ ")" ~
       (("ON DELETE NO ACTION ON UPDATE NO ACTION".r)?) ~
       (("ON DELETE CASCADE ON UPDATE CASCADE".r)?) ~
       (("ON UPDATE CURRENT_TIMESTAMP".r)?) ~
       columnDelimiter ^^ {
-      case _ ~ keyName ~ _ ~ "(" ~ columnName ~ ")" ~ _ ~
-        tableName ~ "(" ~ extColumn ~ ")" ~ _ ~ _ ~_ ~ _ =>
+      case _ ~ keyName ~ _ ~ "(" ~ columnName ~ columnNames ~ ")" ~ _ ~
+        tableName ~ "(" ~ extColumn ~ extColumns ~ ")" ~ _ ~ _ ~_ ~ _ =>
         ForeignKey(keyName, columnName, tableName, extColumn)
     }
 
@@ -94,7 +95,7 @@ object DDLParser extends JavaTokenParsers {
     "(" ~ (column *) ~ (constraint *) ~ ")" ~ (tableMetaInfo ?) ^^ {
     case _ ~ _ ~ name ~ "(" ~ columns ~ constraints ~ ")" ~ meta => {
       val columnsData = columns map {
-        case colName ~ colType ~ charSet ~ unsigned ~ nnull ~ notNull ~ autoInc ~ isDefault ~ _ ~ _ =>
+        case colName ~ colType ~ charSet ~ unsigned ~ nnull ~ notNull ~ autoInc ~ isDefault ~ onUpdate ~ _ ~ _ =>
           Column(cleanString(colName), colType, notNull.isDefined,
             autoInc.isDefined, isDefault.map(_._2))
       }
