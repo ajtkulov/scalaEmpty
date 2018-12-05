@@ -55,6 +55,17 @@ object Match {
     }
   }
 
+  def oneMatch(idx: Int, edge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat) = {
+    val r = Holder.r
+    val m = r(idx)
+
+    r.values.par.filter(witem => RealMatcher.intMap(witem.idx).intersect(typ).nonEmpty).foreach { i =>
+      for (edgeIdx <- 0 until 4) {
+        Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
+      }
+    }
+  }
+
   def check(f2s: List[(Int, Int)], f2ff: List[(Int, Int)], ff2ss: List[(Int, Int)], ss2s: List[(Int, Int)]): Boolean = {
     val res = for {
       (f1, s1) <- f2s

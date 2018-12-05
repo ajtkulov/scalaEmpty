@@ -36,7 +36,7 @@ object Main extends App {
   def drawAll() = {
     val in = FileUtils.dir(".").filter(_.getName.contains("_")).filter(_.getName.contains(".jpg")).toParArray.map(x => (read(x.getName), x.getName.substring(6, 11))).toList.sortBy(_._2)
 
-    val rr = draw(in, Pos(800, 650), Pos(1400, 1600), 3, 5)
+    val rr = draw(in, Pos(800, 600), Pos(1500, 1600), 3, 5)
 
     ImageIO.write(rr, "png", new File("out.jpg"))
   }
@@ -76,7 +76,7 @@ object Main extends App {
 
         res.setRGB(c * z.x + xx, r * z.y + yy, img.getRGB(x, y))
       }
-      g2d.drawString(text, c * z.x, r * z.y + 10)
+      g2d.drawString(s"$text/${Index.get(text.toInt)}", c * z.x, r * z.y + 10)
 
       c = c + 1
       if (c == perRow) {
@@ -385,6 +385,8 @@ object MatchParams {
   val precise = MatchParams(0.025, 2000, 350, 800, 10)
 
   val standard = MatchParams(0.05, 2000, 1500, 1500, 10)
+
+  val all = MatchParams(0.05, 20000, 15000, 15000, 15)
 
   val wide = MatchParams(0.05, 3000, 2500, 2500, 15)
 

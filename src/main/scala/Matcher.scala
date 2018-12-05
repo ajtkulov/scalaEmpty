@@ -161,14 +161,27 @@ trait Mat {
 object RealMatcher extends Mat {
   lazy val map: Map[String, Set[Int]] = scala.io.Source.fromFile("mark.txt").getLines().map { line =>
     val split = line.split(" ")
-    (split.head.dropRight(3), split.last.toList.map(_.toInt).toSet)
+    (split.head.dropRight(3), split.last.toList.map(_.toString.toInt).toSet)
   }.toMap
 
   def mat(fst: WItem, snd: WItem): Boolean = {
     map(fst.name.dropRight(4)).intersect(map(snd.name.dropRight(4))).nonEmpty
   }
+
+  lazy val intMap: Map[Int, Set[Int]] = {
+    map.map {
+      case (key, value) => (key.filter(_.isDigit).toInt, value)
+    }
+  }
 }
 
 object FakeMatcher extends Mat {
   def mat(fst: WItem, snd: WItem): Boolean = true
+}
+
+object Index {
+  lazy val list: List[(String, Int)] = scala.io.Source.fromFile("list.txt").getLines().toList.zipWithIndex.map { case (name, idx) => (name, idx + 1) }
+
+  def get(idx: Int): Int = list.filter { case (name, _) => name.contains((idx / 10).toString)}.head._2
+
 }
