@@ -23,6 +23,7 @@ import io.circe.parser.decode
 import Matcher._
 import javax.swing.JPanel
 import Match.readData
+import scala.sys.process._
 
 case class Color(r: Int, g: Int, b: Int) {}
 
@@ -31,6 +32,20 @@ object Main extends App {
 //    Match.concave("/Users/pavel/code/scalaEmpty/center")
 //    Match.mark("/Users/pavel/code/puzzleInput/centred")
     drawAll()
+  }
+
+  def clean() = {
+    "rm *.jpg".!
+  }
+
+  def showAll() = {
+    "open out.jpg".!
+  }
+
+  def show(idx: Int) = {
+    val list = FileUtils.dir("/Users/pavel/code/puzzleMarked")
+    val map = list.map(x => (x.getName.filter(_.isDigit).take(5).toInt, x)).toMap
+    s"open ${map(idx).getAbsolutePath}".!
   }
 
   def drawAll() = {
@@ -387,6 +402,8 @@ object MatchParams {
   val standard = MatchParams(0.05, 2000, 1500, 1500, 10)
 
   val all = MatchParams(0.05, 20000, 15000, 15000, 15)
+
+  val all1 = MatchParams(0.07, 20000, 15000, 15000, 20)
 
   val wide = MatchParams(0.05, 3000, 2500, 2500, 15)
 
