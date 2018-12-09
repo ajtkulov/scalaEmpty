@@ -56,8 +56,16 @@ object Main extends App {
     ImageIO.write(rr, "png", new File("out.jpg"))
   }
 
-  def drawItems() = {
-    val in = Holder.r.values.take(300).map(x => (x.item.f, x.idx.toString))
+  def drawItems(set: Set[Int]) = {
+    val in = Holder.r.values.filter(w => RealMatcher.intMap(w.idx).intersect(set).nonEmpty).map(x => (x.item.f, x.idx.toString))
+
+    val rr = draw(in, Pos(150, 150), Pos(850, 850), 5, 10)
+
+    ImageIO.write(rr, "png", new File("out.jpg"))
+  }
+
+  def drawItemsHarder(set: Set[Int]) = {
+    val in = Holder.r.values.filter(w => RealMatcher.intMap(w.idx).intersect(set) == set).map(x => (x.item.f, x.idx.toString))
 
     val rr = draw(in, Pos(150, 150), Pos(850, 850), 5, 10)
 

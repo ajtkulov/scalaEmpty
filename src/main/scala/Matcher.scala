@@ -184,4 +184,5 @@ object Index {
 
   def get(idx: Int): Int = list.filter { case (name, _) => name.contains((idx / 10).toString)}.head._2
 
+  def getByShort(idx: Int): (String, Int) = list(idx - 1)
 }
