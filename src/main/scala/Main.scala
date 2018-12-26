@@ -255,7 +255,9 @@ trait LineOrder {
 
 }
 
-case class MinMax(minX: Int, maxX: Int, minY: Int, maxY: Int) {}
+case class MinMax(minX: Int, maxX: Int, minY: Int, maxY: Int) {
+  def mirror: MinMax = MinMax(minY, maxY, minX, maxX)
+}
 
 case class Item(f: BufferedImage, center: Pos, edgePoints: List[Pos]) extends LineOrder {
   lazy val bools: Image[Boolean] = ColorImage(f.getColors).map(x => nonEmpty(x))
@@ -360,6 +362,8 @@ case class Pos(x: Int, y: Int) {
   def rotate(center: Pos, angle: Double) = {
     ((Coor(x, y) - center.toCoor).rotate(angle) + center.toCoor).toPos
   }
+
+  def mirror: Pos = Pos(y, x)
 }
 
 object IteratorUtils {
@@ -541,6 +545,16 @@ object Handler {
         x <- 0 until f.getWidth
         y <- 0 until f.getHeight
       } res.setRGB(x, y, f.getRGB(x, y))
+
+      res
+    }
+
+    def mirror: BufferedImage = {
+      val res = new BufferedImage(f.getHeight, f.getWidth, BufferedImage.TYPE_INT_RGB)
+      for {
+        x <- 0 until f.getWidth
+        y <- 0 until f.getHeight
+      } res.setRGB(y, x, f.getRGB(x, y))
 
       res
     }
@@ -919,9 +933,13 @@ object Geom {
   }
 }
 
-case class ConcaveConvex(convex: Boolean, size: Int, center: Pos) {}
+case class ConcaveConvex(convex: Boolean, size: Int, center: Pos) {
+  def mirror: ConcaveConvex = copy(center = center.mirror)
+}
 
-case class MetaData(concave: List[ConcaveConvex], minMax: MinMax)
+case class MetaData(concave: List[ConcaveConvex], minMax: MinMax) {
+  def mirror: MetaData = MetaData(concave.reverse.map(_.mirror), minMax.mirror)
+}
 
 object ConcaveConvex {
   implicit val encoder: Encoder[ConcaveConvex] = deriveEncoder

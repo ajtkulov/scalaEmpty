@@ -6,6 +6,7 @@ import javax.imageio.ImageIO
 import io.circe.syntax._
 import ItemStored._
 import io.circe.parser.decode
+import Handler._
 
 object Match {
   def readFiles(dir: String, size: Int = Int.MaxValue): List[(String, Int, String)] = {
@@ -200,7 +201,22 @@ object Match {
   }
 }
 
-case class WItem(item: Item, idx: Int, name: String, metaData: MetaData) {}
+case class WItem(item: Item, idx: Int, name: String, metaData: MetaData) {
+  def rotate(): WItem = {
+    val edge = item.edgePoints.reverse.map(x => x.mirror)
+
+    val i = Item(item.f.mirror, item.center.mirror, edge)
+    WItem(i, idx, name, metaData.mirror)
+  }
+
+  def save(dir: String) = {
+    val n = name.dropRight(5)
+    ImageIO.write(item.f, "png", new File(s"$dir/$n.jpg"))
+    FileUtils.write(s"$dir/$n.meta", item.to.asJson.noSpaces)
+    FileUtils.write(s"$dir/$n.meta.data", metaData.asJson.noSpaces)
+  }
+
+}
 
 case class Data(values: List[WItem]) {
   lazy val map = values.groupBy(_.idx).mapValues(_.head)
