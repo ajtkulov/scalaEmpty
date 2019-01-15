@@ -186,3 +186,17 @@ object Index {
 
   def getByShort(idx: Int): (String, Int) = list(idx - 1)
 }
+
+trait OnTable {
+  def onTable(w: WItem): Boolean
+}
+
+object RealOnTable extends OnTable {
+  lazy val all: Set[Int] = scala.io.Source.fromFile("pairs").getLines().toList.flatMap(x => x.filterNot(c => c == ' ' || c == '_').split("-")).toSet.map(_.toInt)
+  override def onTable(w: WItem): Boolean = all.contains(w.idx)
+}
+
+object FakeOnTable extends OnTable {
+  override def onTable(w: WItem): Boolean = false
+}
+
