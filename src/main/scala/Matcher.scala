@@ -192,7 +192,7 @@ trait OnTable {
 }
 
 object RealOnTable extends OnTable {
-  lazy val all: Set[Int] = scala.io.Source.fromFile("pairs").getLines().toList.flatMap(x => x.filterNot(c => c == ' ' || c == '_').split("-")).toSet.map(_.toInt)
+  lazy val all: Set[Int] = scala.io.Source.fromFile("pairs").getLines().toList.flatMap(x => x.filterNot(c => c == ' ' || c == '_').split("-")).map(x => x.toInt).toSet
   override def onTable(w: WItem): Boolean = all.contains(w.idx)
 }
 
