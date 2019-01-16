@@ -42,10 +42,17 @@ object Main extends App {
     "open out.jpg".!
   }
 
-  def show(idx: Int) = {
+  def show(idx: Int): Int = {
     val list = FileUtils.dir("/Users/pavel/code/puzzleMarked")
     val map = list.map(x => (x.getName.filter(_.isDigit).take(5).toInt, x)).toMap
     s"open ${map(idx).getAbsolutePath}".!
+  }
+
+  def show(idx: Int, id: Int): Int = {
+    val (str, _) = Index.getByShort(idx)
+    val out: Int = (str.filter(_.isDigit) + id.toString).toInt
+    println(out)
+    show(out)
   }
 
   def drawAll() = {
@@ -56,7 +63,7 @@ object Main extends App {
     ImageIO.write(rr, "png", new File("out.jpg"))
   }
 
-  def drawItems(set: Set[Int])(implicit table: OnTable = RealOnTable) = {
+  def drawItems(set: Set[Int])(implicit table: OnTable = RealOnTable()) = {
     val in = Holder.r.values.filter(w => !table.onTable(w) && RealMatcher.intMap(w.idx).intersect(set).nonEmpty).map(x => (x.item.f, x.idx.toString))
 
     val rr = draw(in, Pos(150, 150), Pos(850, 850), 5, 10)
@@ -64,7 +71,7 @@ object Main extends App {
     ImageIO.write(rr, "png", new File("out.jpg"))
   }
 
-  def drawItemsHarder(set: Set[Int])(implicit table: OnTable = RealOnTable) = {
+  def drawItemsHarder(set: Set[Int])(implicit table: OnTable = RealOnTable()) = {
     val in = Holder.r.values.filter(w => !table.onTable(w) && RealMatcher.intMap(w.idx).intersect(set) == set).map(x => (x.item.f, x.idx.toString))
 
     val rr = draw(in, Pos(150, 150), Pos(850, 850), 5, 10)
