@@ -36,45 +36,53 @@ object Match {
     WItem(item, idx, name, meta)
   }
 
-  def oneMatch(idx: Int)(implicit params: MatchParams, mat: Mat) = {
+  def oneMatch(idx: Int)(implicit params: MatchParams, mat: Mat): Unit = {
+    val onTable: OnTable = RealOnTable()
     val r = Holder.r
     val m = r(idx)
 
     r.values.par.foreach { i =>
-      Matcher.tryMatch(m, i, s"${m.idx}_${i.idx}")
+      if (!onTable.onTable(i))
+        Matcher.tryMatch(m, i, s"${m.idx}_${i.idx}")
     }
   }
 
-  def oneMatch(idx: Int, edge: Int)(implicit params: MatchParams, mat: Mat) = {
+  def oneMatch(idx: Int, edge: Int)(implicit params: MatchParams, mat: Mat): Unit = {
+    val onTable: OnTable = RealOnTable()
     val r = Holder.r
     val m = r(idx)
 
     r.values.par.foreach { i =>
-      for (edgeIdx <- 0 until 4) {
-        Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
-      }
+      if (!onTable.onTable(i))
+        for (edgeIdx <- 0 until 4) {
+          Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
+        }
     }
   }
 
   def oneMatch(idx: Int, edge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat) = {
+    val onTable: OnTable = RealOnTable()
     val r = Holder.r
     val m = r(idx)
 
     r.values.par.filter(witem => RealMatcher.intMap(witem.idx).intersect(typ).nonEmpty).foreach { i =>
-      for (edgeIdx <- 0 until 4) {
-        Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
-      }
+      if (!onTable.onTable(i))
+        for (edgeIdx <- 0 until 4) {
+          Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
+        }
     }
   }
 
   def oneMatchHarder(idx: Int, edge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat) = {
+    val onTable: OnTable = RealOnTable()
     val r = Holder.r
     val m = r(idx)
 
     r.values.par.filter(witem => RealMatcher.intMap(witem.idx).intersect(typ) == typ).foreach { i =>
-      for (edgeIdx <- 0 until 4) {
-        Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
-      }
+      if (!onTable.onTable(i))
+        for (edgeIdx <- 0 until 4) {
+          Matcher.tryOne(m, i, s"${m.idx}_${i.idx}", edge, edgeIdx)
+        }
     }
   }
 
@@ -134,7 +142,7 @@ object Match {
 
     val data = readData("/Users/pavel/puzzle/center")
     //    both(16081, 14872, data)(MatchParams.precise)
-//    both(16081, 14872, data)(MatchParams.standard)
+    //    both(16081, 14872, data)(MatchParams.standard)
   }
 
   def both(fst: Int, snd: Int, data: Data)(implicit params: MatchParams, mat: Mat) = {
