@@ -424,6 +424,8 @@ object MatchParams {
 
   val all1 = MatchParams(0.07, 20000, 15000, 15000, 20)
 
+  val all2 = MatchParams(0.1, 20000, 15000, 15000, 30)
+
   val wide = MatchParams(0.05, 3000, 2500, 2500, 15)
 
   val medium = MatchParams(0.035, 2000, 1200, 1200, 10)
