@@ -26,7 +26,9 @@ object Matcher {
     res.toList
   }
 
-  def tryOne(fw: WItem, sw: WItem, suff: String, fIdx: Int, sIdx: Int)(implicit params: MatchParams, mat: Mat): Option[(String, String)] = {
+  case class RotateInfo(r1: Double, c1: Pos, r2: Double, c2: Pos) {}
+
+  def tryOne(fw: WItem, sw: WItem, suff: String, fIdx: Int, sIdx: Int, save: Boolean = true)(implicit params: MatchParams, mat: Mat): Option[(String, String, RotateInfo)] = {
     val fst = fw.item
     val snd = sw.item
 
@@ -53,8 +55,9 @@ object Matcher {
 
       nline2 = line2.rotate(snd.center, -r2)
 
-      nnC1 = Pos(1024, 1024) - nline1.fst.toPos + newC1
-      nnC2 = Pos(1024, 1024) - nline2.snd.toPos + newC2
+      cc = Pos(1024, 1024)
+      nnC1 = cc - nline1.fst.toPos + newC1
+      nnC2 = cc - nline2.snd.toPos + newC2
 
       dd = Coor.distance(nnC1.toCoor, nnC2.toCoor)
       if dd < params.distConv
@@ -63,8 +66,8 @@ object Matcher {
       sndRotated = rotate(sw, r2, snd.center)
       out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
 
-      sh = shift(fstRotated, out, nline1.fst.toPos, Pos(1024, 1024))
-      err = shift(sndRotated, out, nline2.snd.toPos, Pos(1024, 1024))
+      sh = shift(fstRotated, out, nline1.fst.toPos, cc)
+      err = shift(sndRotated, out, nline2.snd.toPos, cc)
 
       space = errorSpace(out, Coor.distance(nline1.fst, nline1.snd).toInt)
 
@@ -80,9 +83,58 @@ object Matcher {
             """.stripMargin
 
       val output = s"${suff}${mm}.jpg"
-      ImageIO.write(out, "png", new File(output))
-      (output, rr)
+      if (save) {
+        ImageIO.write(out, "png", new File(output))
+      }
+      (output, rr, RotateInfo(r1, nline1.fst.toPos, r2, nline2.snd.toPos))
     }
+  }
+
+  def drawOne(fw: WItem, sw: WItem, fIdx: Int, sIdx: Int): BufferedImage = {
+    val fst = fw.item
+    val snd = sw.item
+
+    val line1 = fst.line2(fIdx)
+    val line2 = snd.line2(sIdx)
+    val r1 = rotationAngle(line1.fst, line1.snd)
+    val nline1 = line1.rotate(fst.center, -r1)
+
+    val r2 = rotationAngle(line2.fst, line2.snd) + Math.PI
+
+    val nline2 = line2.rotate(snd.center, -r2)
+
+    val cc = Pos(1024, 1024)
+
+    val fstRotated = rotate(fw, r1, fst.center)
+    val sndRotated = rotate(sw, r2, snd.center)
+    val out = new BufferedImage(2048, 2048, BufferedImage.TYPE_INT_RGB)
+
+    val sh = shift(fstRotated, out, nline1.fst.toPos, cc)
+    val err = shift(sndRotated, out, nline2.snd.toPos, cc)
+    out
+  }
+
+  def drawOther(fw: WItem, sw: WItem, fIdx: Int, sIdx: Int, prev: BufferedImage): BufferedImage = {
+    val fst = fw.item
+    val snd = sw.item
+
+    val line1 = fst.line2(fIdx)
+    val line2: Line2 = snd.line2(sIdx)
+    val line3: Line2 = fst.line2((fIdx + 1) % 4)
+    val r1 = rotationAngle(line1.fst, line1.snd)
+    val nline1 = line1.rotate(fst.center, -r1)
+
+    val diff = rotationAngle(line3.fst, line3.snd)
+
+    val r2 = rotationAngle(line2.fst, line2.snd) + r1 - diff
+
+    val nline2 = line2.rotate(snd.center, -r2)
+
+    val cc = Pos(1024, 1024)
+
+    val sndRotated = rotate(sw, r2, snd.center)
+    val err = shift(sndRotated, prev, nline2.fst.toPos, cc)
+    prev
   }
 
   def tryMatch(fw: WItem, sw: WItem, suff: String)(implicit params: MatchParams, mat: Mat) = {
@@ -182,7 +234,7 @@ object FakeMatcher extends Mat {
 object Index {
   lazy val list: List[(String, Int)] = scala.io.Source.fromFile("list.txt").getLines().toList.zipWithIndex.map { case (name, idx) => (name, idx + 1) }
 
-  def get(idx: Int): Int = list.filter { case (name, _) => name.contains((idx / 10).toString)}.head._2
+  def get(idx: Int): Int = list.filter { case (name, _) => name.contains((idx / 10).toString) }.head._2
 
   def getByShort(idx: Int): (String, Int) = list(idx - 1)
 }
@@ -193,6 +245,7 @@ trait OnTable {
 
 case class RealOnTable() extends OnTable {
   val all: Set[Int] = scala.io.Source.fromFile("pairs").getLines().toList.flatMap(x => x.filterNot(c => c == ' ' || c == '_').split("-")).map(x => x.toInt).toSet
+
   override def onTable(w: WItem): Boolean = all.contains(w.idx)
 }
 

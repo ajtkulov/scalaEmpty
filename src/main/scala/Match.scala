@@ -86,94 +86,29 @@ object Match {
     }
   }
 
-  def check(f2s: List[(Int, Int)], f2ff: List[(Int, Int)], ff2ss: List[(Int, Int)], ss2s: List[(Int, Int)]): Boolean = {
-    val res = for {
-      (f1, s1) <- f2s
-      (f2, ff1) <- f2ff
-      if f2 != f1
-      (ff2, ss1) <- ff2ss
-      if ff1 != ff2
-      (ss2, s2) <- ss2s
-      if ss1 != ss2 && s1 != s2
-    } yield ()
+  def twoMatchHarder(fst: Int, fstEdge: Int, snd: Int, sndEdge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat) = {
+    val onTable: OnTable = RealOnTable()
+    val r = Holder.r
+    val m = r(fst)
+    val m2 = r(snd)
 
-    res.nonEmpty
-  }
+    r.values.par.filter(witem => RealMatcher.intMap(witem.idx).intersect(typ) == typ).foreach { i =>
+      if (!onTable.onTable(i))
+        for (edgeIdx <- 0 until 4) {
+          val z: Option[(String, String, Matcher.RotateInfo)] = Matcher.tryOne(i, m, s"${i.idx}_${m.idx}", edgeIdx, fstEdge, false)
+          if (z.isDefined) {
+            val zz = Matcher.tryOne(i, m2, s"${i.idx}_${m2.idx}", (edgeIdx + 1) % 4, sndEdge, false)
+            if (zz.isDefined) {
+              println(z.get._3)
+              println(zz.get._3)
+              println(i.idx)
+              println()
+            }
 
-  def double(fst: Int, snd: Int, data: Data)(implicit params: MatchParams) = {
-    var r = 0
-    val f = data(fst)
-    val s = data(snd)
-
-    val f2s = Matcher.basicMatch(f, s)
-
-    assert(f2s.nonEmpty)
-
-    for {
-      fi <- 0 until data.size
-      si <- fi + 1 until data.size
-      ff = data.byIdx(fi)
-      ss = data.byIdx(si)
-      if ff.idx != f.idx && ff.idx != s.idx && ss.idx != f.idx && ss.idx != s.idx
-
-      f2ff = Matcher.basicMatch(f, ff)
-      if f2ff.nonEmpty
-
-      ss2s = Matcher.basicMatch(ss, s)
-      if ss2s.nonEmpty
-
-      ff2ss = Matcher.basicMatch(ff, ss)
-      if ff2ss.nonEmpty
-      if check(f2s, f2ff, ff2ss, ss2s)
-    } {
-      println(s"${ff.idx} ${ss.idx}")
-      r = r + 1
-
-    }
-    println(r)
-  }
-
-  def dd() = {
-    val data = readData("/Users/pavel/puzzle/center")
-    double(16110, 16081, data)(MatchParams.precise)
-  }
-
-  def main1(): Unit = {
-
-    val data = readData("/Users/pavel/puzzle/center")
-    //    both(16081, 14872, data)(MatchParams.precise)
-    //    both(16081, 14872, data)(MatchParams.standard)
-  }
-
-  def both(fst: Int, snd: Int, data: Data)(implicit params: MatchParams, mat: Mat) = {
-    val f = data(fst)
-    val s = data(snd)
-    var r = 0
-
-    (0 until data.size).par.foreach { idx =>
-      val other = data.byIdx(idx)
-      val f1 = Matcher.basicMatch(f, other)
-      val s1 = Matcher.basicMatch(s, other)
-      if (f1.nonEmpty && s1.nonEmpty && (f1.map(_._2) ++ s1.map(_._2)).distinct.size > 1) {
-
-        val z = Matcher.tryMatch(other, f, s"${other.idx}_${f.idx}")
-        if (z.nonEmpty) {
-          val z1 = Matcher.tryMatch(other, s, s"${other.idx}_${s.idx}")
-          if (z1.isEmpty) {
-            z.foreach(fileName => new File(fileName.get._1).delete())
-          } else {
-            println(other.idx)
-            r = r + 1
           }
         }
-        //        println(other.idx)
-        //        r = r + 1
-      }
     }
-
-    println(s"=$r")
   }
-
 
   def center(dir: String) = {
     readFiles(dir).foreach { x =>
