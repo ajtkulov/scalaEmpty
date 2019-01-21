@@ -95,16 +95,17 @@ object Match {
     r.values.par.filter(witem => RealMatcher.intMap(witem.idx).intersect(typ) == typ).foreach { i =>
       if (!onTable.onTable(i))
         for (edgeIdx <- 0 until 4) {
-          val z: Option[(String, String, Matcher.RotateInfo)] = Matcher.tryOne(i, m, s"${i.idx}_${m.idx}", edgeIdx, fstEdge, false)
-          if (z.isDefined) {
-            val zz = Matcher.tryOne(i, m2, s"${i.idx}_${m2.idx}", (edgeIdx + 1) % 4, sndEdge, false)
-            if (zz.isDefined) {
-              println(z.get._3)
-              println(zz.get._3)
-              println(i.idx)
-              println()
-            }
+          if (Matcher.basicMatch(i, m, edgeIdx, fstEdge)) {
+            val z: Option[(String, String, Matcher.RotateInfo)] = Matcher.tryOne(i, m, s"${i.idx}_${m.idx}", edgeIdx, fstEdge, false)
+            if (z.isDefined) {
+              val zz = Matcher.tryOne(i, m2, s"${i.idx}_${m2.idx}", (edgeIdx + 3) % 4, sndEdge, false)
+              if (zz.isDefined) {
 
+                val zzz = Matcher.drawOne(i, m, edgeIdx, fstEdge)
+                val o = Matcher.drawOther(i, m2, edgeIdx, sndEdge, zzz)
+                ImageIO.write(o, "png", new File(s"${m.idx}_${i.idx}.jpg"))
+              }
+            }
           }
         }
     }

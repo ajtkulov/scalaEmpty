@@ -63,6 +63,14 @@ object Main extends App {
     ImageIO.write(rr, "png", new File("out.jpg"))
   }
 
+  def drawAll1() = {
+    val in = FileUtils.dir(".").filter(_.getName.contains("_")).filter(_.getName.contains(".jpg")).toParArray.map(x => (read(x.getName), x.getName.substring(6, 11))).toList.sortBy(_._2)
+
+    val rr = draw(in, Pos(600, 600), Pos(1500, 1600), 3, 5)
+
+    ImageIO.write(rr, "png", new File("out.jpg"))
+  }
+
   def drawItems(set: Set[Int])(implicit table: OnTable = RealOnTable()) = {
     val in = Holder.r.values.filter(w => !table.onTable(w) && RealMatcher.intMap(w.idx).intersect(set).nonEmpty).map(x => (x.item.f, x.idx.toString))
 
@@ -425,6 +433,10 @@ object MatchParams {
   val all1 = MatchParams(0.07, 20000, 15000, 15000, 20)
 
   val all2 = MatchParams(0.1, 20000, 15000, 15000, 30)
+
+  val lol = MatchParams(0.07, 5000, 5000, 5000, 30)
+
+  val lol1 = MatchParams(0.1, 5000, 5000, 5000, 30)
 
   val wide = MatchParams(0.05, 3000, 2500, 2500, 15)
 

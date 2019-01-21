@@ -9,21 +9,44 @@ import main.Handler._
 import scala.collection.mutable.ArrayBuffer
 
 object Matcher {
-  def basicMatch(fst: WItem, snd: WItem)(implicit params: MatchParams): List[(Int, Int)] = {
+  def basicMatch(fw: WItem, sw: WItem, fIdx: Int, sIdx: Int)(implicit params: MatchParams, mat: Mat): Boolean = {
+    val fst = fw.item
+    val snd = sw.item
+
     val res = for {
-      f <- 0 until 4
-      s <- 0 until 4
-      ff = fst.item.distance(f)
-      ss = snd.item.distance(s)
+      f <- Some(fIdx)
+      s <- Some(sIdx)
+      if mat.mat(fw, sw)
+      ff = fst.distance(f)
+      ss = snd.distance(s)
       delta = Math.abs(ff - ss) / ff
       if delta < params.sizeDiff
-      c1 = fst.metaData.concave(f)
-      c2 = snd.metaData.concave(s)
+      c1 = fw.metaData.concave(f)
+      c2 = sw.metaData.concave(s)
       if c1.convex ^ c2.convex
       if Math.abs(c1.size - c2.size) < params.diffInConvex
-    } yield (f, s)
+      line1 = fst.line2(f)
+      line2 = snd.line2(s)
+      r1 = rotationAngle(line1.fst, line1.snd)
+      newC1 = c1.center.rotate(fst.center, -r1)
+      nline1 = line1.rotate(fst.center, -r1)
 
-    res.toList
+      r2 = rotationAngle(line2.fst, line2.snd) + Math.PI
+      newC2 = c2.center.rotate(snd.center, -r2)
+
+      nline2 = line2.rotate(snd.center, -r2)
+
+      cc = Pos(1024, 1024)
+      nnC1 = cc - nline1.fst.toPos + newC1
+      nnC2 = cc - nline2.snd.toPos + newC2
+
+      dd = Coor.distance(nnC1.toCoor, nnC2.toCoor)
+      if dd < params.distConv
+    } yield {
+      ()
+    }
+
+    res.isDefined
   }
 
   case class RotateInfo(r1: Double, c1: Pos, r2: Double, c2: Pos) {}
