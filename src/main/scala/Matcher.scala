@@ -236,7 +236,13 @@ trait Mat {
 object RealMatcher extends Mat {
   lazy val map: Map[String, Set[Int]] = scala.io.Source.fromFile("mark.txt").getLines().map { line =>
     val split = line.split(" ")
-    (split.head.dropRight(3), split.last.toList.map(_.toString.toInt).toSet)
+    val set = split.last.toList.map(_.toString.toInt).toSet
+    val refSet = if (!set.contains(6)) {
+      set + 7
+    } else {
+      set
+    }
+    (split.head.dropRight(3), refSet)
   }.toMap
 
   def mat(fst: WItem, snd: WItem): Boolean = {
