@@ -11,7 +11,6 @@ import scala.reflect.ClassTag
 import MathUtils._
 import IteratorUtils._
 
-import scala.collection.mutable.ArrayBuffer
 import scala.util.{Random, Success, Try}
 import io.circe.syntax._
 import io.circe._
@@ -23,15 +22,27 @@ import io.circe.parser.decode
 import Matcher._
 import javax.swing.JPanel
 import Match.readData
+
+import scala.collection.mutable.ArrayBuffer
 import scala.sys.process._
 
 case class Color(r: Int, g: Int, b: Int) {}
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
+//    val item1 = Model.toItem("326.0.1")
+//    val item2 = Model.toItem("334.0.0")
+//    val z = Model.draw(List(List(item1, item2)))
+
+
+    Model.trySelect(Model.read("model.txt"), Pos(1, 1))(MatchParams.standard)
+
+    val model = Model.read("model.txt")
+    Model.draw(Model.reflect(model))
+
 //    Match.concave("/Users/pavel/code/scalaEmpty/center")
 //    Match.mark("/Users/pavel/code/puzzleInput/centred")
-    drawAll()
+//    drawAll()
   }
 
   def clean() = {
@@ -53,6 +64,11 @@ object Main extends App {
     val out: Int = (str.filter(_.isDigit) + id.toString).toInt
     println(out)
     show(out)
+  }
+
+  def pairToIdx(idx: Int, id: Int): Int = {
+    val (str, _) = Index.getByShort(idx)
+    (str.filter(_.isDigit) + id.toString).toInt
   }
 
   def drawAll() = {
@@ -80,7 +96,7 @@ object Main extends App {
   }
 
   def drawItemsHarder(set: Set[Int])(implicit table: OnTable = RealOnTable()) = {
-    val in = Holder.r.values.filter(w => !table.onTable(w) && RealMatcher.intMap(w.idx).intersect(set) == set).map(x => (x.item.f, x.idx.toString))
+    val in = Holder.r.values.filter(w => !table.onTable(w) && RealMatcher.intMap(w.idx).intersect(set) == set).map(x => (x.item.f, x.idx.toString)).sortBy(_._2)
 
     val rr = draw(in, Pos(150, 150), Pos(850, 850), 5, 10)
 

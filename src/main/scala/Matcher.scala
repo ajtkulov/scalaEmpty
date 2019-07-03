@@ -275,7 +275,16 @@ trait OnTable {
 case class RealOnTable() extends OnTable {
   val all: Set[Int] = scala.io.Source.fromFile("pairs").getLines().toList.flatMap(x => x.filterNot(c => c == ' ' || c == '_').split("-")).map(x => x.toInt).toSet
 
-  override def onTable(w: WItem): Boolean = all.contains(w.idx)
+  def extra: Set[Int] = {
+    val a: List[String] = scala.io.Source.fromFile("extra.txt").getLines().toList.map(_.toInt).map(Index.getByShort).map(_._1)
+    val res = for (idx <- 0 until 3; item <- a; z = RealMatcher.map(s"$item.$idx."); if z.contains(1) && z.size == 2) yield {
+      item.filter(_.isDigit).toInt * 10 + idx
+    }
+    res.toSet
+  }
+
+//  override def onTable(w: WItem): Boolean = all.contains(w.idx)
+  override def onTable(w: WItem): Boolean = !extra.contains(w.idx)
 }
 
 object FakeOnTable extends OnTable {
