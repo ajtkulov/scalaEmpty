@@ -10,6 +10,10 @@ import scala.util.Try
 object Model {
   type M = List[List[ItemInfo]]
 
+  def toString1(m: M): String = {
+    m.map(_.mkString(" / ")).mkString("\n")
+  }
+
   def reflect(model: M): M = {
     model.map(_.reverse).reverse
   }
@@ -41,6 +45,7 @@ object Model {
          list = values(i)
          j <- list.indices
          z = values(i)(j)
+         if z.full
          img = rotateItem(Holder.r(Main.pairToIdx(z.num, z.idx.get)), z.rotation.get)
     } {
       for {
@@ -70,8 +75,8 @@ object Model {
 
   lazy val outputShift = List[Int](0, 2, 3, 1)
 
-  def trySelect(model: M, pos: Pos)(implicit params: MatchParams): List[ItemInfo] = {
-    val res = scala.collection.mutable.Set[ItemInfo]()
+  def trySelect(model: M, pos: Pos)(implicit params: MatchParams): Map[Int, List[ItemInfo]] = {
+    val res = scala.collection.mutable.ListBuffer[(Int, ItemInfo)]()
     val cur = model(pos.y)(pos.x)
     for {
       idx <- 0 until 3
@@ -83,13 +88,60 @@ object Model {
         val nn = model(neighborhood.y)(neighborhood.x)
         if (nn.idx.isDefined && nn.rotation.isDefined &&
           Matcher.basicMatch(Holder.r(Main.pairToIdx(cur.num, idx)), Holder.r(Main.pairToIdx(nn.num, nn.idx.get)), rotate, (neRot(neighIdx) + nn.rotation.get) % 4)(params, FakeMatcher)) {
-          res.add(ItemInfo(cur.num, Some(idx), Some((rotate + outputShift(neighIdx)) % 4)))
+          res.append((idx, ItemInfo(cur.num, Some(idx), Some((rotate + outputShift(neighIdx)) % 4))))
         }
       }
     }
 
-    res.toList
+    res.groupBy(_._1).mapValues(_.toList.map(_._2))
+  }
+
+  def tryOne(model: M)(implicit params: MatchParams): Option[(Pos, ItemInfo)] = {
+    for {
+      col <- model.indices
+      row <- model.head.indices
+      cell = model(col)(row)
+      if cell.idx.isEmpty && cell.rotation.isEmpty && cell.num != 0
+    } {
+      val pos = Pos(row, col)
+      val r = trySelect(model, pos)
+      val rr = r.toList.flatMap(_._2).distinct
+      if (rr.size == 1) {
+        println(s"${cell.num} $col $row $r")
+        return Some((pos, rr.head))
+      }
+    }
+
+    None
+  }
+
+  def replace(m: M, pos: Pos, item: ItemInfo): M = {
+    val mutable = m.toArray.map(_.toArray)
+    mutable(pos.y)(pos.x) = item
+
+    mutable.map(_.toList).toList
+  }
+
+  def replace(model: M)(implicit params: MatchParams): M = {
+    val res = tryOne(model)
+    val rr: Option[M] = res.map {
+      case (pos, item) =>
+        println("new")
+        replace(model, pos, item)
+    }
+
+    val r = rr.getOrElse(model)
+    FileUtils.write("model.txt", toString1(r))
+    r
   }
 }
 
-case class ItemInfo(num: Int, idx: Option[Int], rotation: Option[Int])
+case class ItemInfo(num: Int, idx: Option[Int], rotation: Option[Int]) {
+  override def toString: String = (idx, rotation) match {
+    case (Some(i), Some(r)) => s"$num.$i.$r"
+    case (Some(i), None) => s"$num.$i"
+    case (None, None) => s"$num"
+  }
+
+  def full: Boolean = idx.isDefined && rotation.isDefined
+}
