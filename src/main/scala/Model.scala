@@ -1,5 +1,6 @@
 package main
 
+import java.awt.Font
 import java.awt.image.BufferedImage
 
 import Handler._
@@ -40,6 +41,9 @@ object Model {
   def draw(values: M): BufferedImage = {
     val res = new BufferedImage(2 * 2048, 2 * 2048, BufferedImage.TYPE_INT_RGB)
 
+    val g2d = res.createGraphics()
+    g2d.setFont(new Font("TimesRoman", Font.PLAIN, 64))
+
     for {i <- values.indices
          list = values(i)
          j <- list.indices
@@ -56,7 +60,11 @@ object Model {
           res.setRGB(j * 500 + x, i * 500 + y, img.getRGB(x, y))
         }
       }
+      g2d.drawString(s"${z.num}", j * 500 + 300, i * 500 + 300)
+
     }
+
+    g2d.dispose()
     res
   }
 
@@ -103,8 +111,36 @@ object Model {
       }
     }
 
+    res.toList.map(_._2).distinct.foreach(x => println(info(x)))
+
     res.groupBy(_._1).mapValues(_.toList.map(_._2))
   }
+
+
+  def check(model: M, pos: Pos)(implicit params: MatchParams): Boolean = {
+    var res = true
+    val cur = model(pos.y)(pos.x)
+    for {
+      neighIdx <- 0 until 4
+//      rotate <- 0 until 4
+    } {
+      val neighborhood = pos + neighborhoods(neighIdx)
+      if (inside(model, neighborhood)) {
+        val nn = model(neighborhood.y)(neighborhood.x)
+        val wItem = Holder.r(Main.pairToIdx(cur.num, cur.idx.get))
+        val rotate = (neighIdx + outputShift(neighIdx)) % 4
+
+        val nnn = Holder.r(Main.pairToIdx(nn.num, nn.idx.get))
+        if (nn.idx.isDefined && nn.rotation.isDefined &&
+          Matcher.basicMatch(wItem, nnn, rotate, (neRot(neighIdx) + nn.rotation.get) % 4)(params, FakeMatcher)) {
+//          res.append((idx, ItemInfo(cur.num, Some(idx), Some((rotate + outputShift(neighIdx)) % 4))))
+        }
+      }
+    }
+    ???
+//    res.groupBy(_._1).mapValues(_.toList.map(_._2))
+  }
+
 
   def tryOne(model: M)(implicit params: MatchParams): Option[(Pos, ItemInfo)] = {
     for {
@@ -123,6 +159,11 @@ object Model {
     }
 
     None
+  }
+
+  def info(itemInfo: ItemInfo): String = {
+    val set = RealMatcher.byPair(itemInfo.num, itemInfo.idx.get)
+    s"${itemInfo} -> $set"
   }
 
   def replace(m: M, pos: Pos, item: ItemInfo): M = {

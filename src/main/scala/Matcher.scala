@@ -254,6 +254,10 @@ object RealMatcher extends Mat {
       case (key, value) => (key.filter(_.isDigit).toInt, value)
     }
   }
+
+  def byPair(idx: Int, num: Int): Set[Int] = {
+    intMap(Main.pairToIdx(idx, num))
+  }
 }
 
 object FakeMatcher extends Mat {
