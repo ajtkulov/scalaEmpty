@@ -40,7 +40,6 @@ object Model {
   def draw(values: M): BufferedImage = {
     val res = new BufferedImage(2 * 2048, 2 * 2048, BufferedImage.TYPE_INT_RGB)
 
-
     for {i <- values.indices
          list = values(i)
          j <- list.indices
@@ -75,6 +74,16 @@ object Model {
 
   lazy val outputShift = List[Int](0, 2, 3, 1)
 
+  def find(model: M, value: Int): Pos = {
+    val res = for {
+      col <- model.indices
+      row <- model.head.indices
+      cell = model(col)(row)
+      if cell.num == value && !cell.full
+    } yield Pos(row, col)
+    res.head
+  }
+
   def trySelect(model: M, pos: Pos)(implicit params: MatchParams): Map[Int, List[ItemInfo]] = {
     val res = scala.collection.mutable.ListBuffer[(Int, ItemInfo)]()
     val cur = model(pos.y)(pos.x)
@@ -86,8 +95,9 @@ object Model {
       val neighborhood = pos + neighborhoods(neighIdx)
       if (inside(model, neighborhood)) {
         val nn = model(neighborhood.y)(neighborhood.x)
+        val wItem = Holder.r(Main.pairToIdx(cur.num, idx))
         if (nn.idx.isDefined && nn.rotation.isDefined &&
-          Matcher.basicMatch(Holder.r(Main.pairToIdx(cur.num, idx)), Holder.r(Main.pairToIdx(nn.num, nn.idx.get)), rotate, (neRot(neighIdx) + nn.rotation.get) % 4)(params, FakeMatcher)) {
+          Matcher.basicMatch(wItem, Holder.r(Main.pairToIdx(nn.num, nn.idx.get)), rotate, (neRot(neighIdx) + nn.rotation.get) % 4)(params, FakeMatcher)) {
           res.append((idx, ItemInfo(cur.num, Some(idx), Some((rotate + outputShift(neighIdx)) % 4))))
         }
       }
