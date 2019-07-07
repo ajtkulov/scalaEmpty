@@ -2,8 +2,10 @@ package main
 
 import java.awt.Font
 import java.awt.image.BufferedImage
-
+import java.io.File
+import scala.sys.process._
 import Handler._
+import javax.imageio.ImageIO
 import main.Handler.{rotate, rotationAngle}
 
 import scala.util.Try
@@ -38,8 +40,8 @@ object Model {
     }
   }
 
-  def draw(values: M): BufferedImage = {
-    val res = new BufferedImage(2 * 2048, 2 * 2048, BufferedImage.TYPE_INT_RGB)
+  def draw(values: M, k: Int = 1): BufferedImage = {
+    val res = new BufferedImage(2 * 2048 * k, 2 * 2048, BufferedImage.TYPE_INT_RGB)
 
     val g2d = res.createGraphics()
     g2d.setFont(new Font("TimesRoman", Font.PLAIN, 64))
@@ -184,6 +186,19 @@ object Model {
     val r = rr.getOrElse(model)
     FileUtils.write("model.txt", toString1(r))
     r
+  }
+
+  def select(value: Int): Map[Int, List[ItemInfo]] = {
+    val m = Model.read("model.txt")
+    Model.trySelect(m, Model.find(m, value))(MatchParams.precise)
+    Model.trySelect(m, Model.find(m, value))(MatchParams.precise1)
+    Model.trySelect(m, Model.find(m, value))(MatchParams.standard)
+    Model.trySelect(m, Model.find(m, value))(MatchParams.all)
+    Model.trySelect(m, Model.find(m, value))(MatchParams.all1)
+  }
+
+  def drawAll(fromRight: Int, width: Int, fromBottom: Int, height: Int, k: Int = 1) = {
+    ImageIO.write(Model.draw(Model.reflect(Model.read("model.txt").map(_.drop(fromRight).take(width)).dropRight(25 - fromBottom)).take(height), k = k), "png", new File(s"123.jpg")); "./open1".!
   }
 }
 
