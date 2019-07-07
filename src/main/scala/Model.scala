@@ -41,10 +41,10 @@ object Model {
   }
 
   def draw(values: M, k: Int = 1): BufferedImage = {
-    val res = new BufferedImage(2 * 2048 * k, 2 * 2048, BufferedImage.TYPE_INT_RGB)
+    val res = new BufferedImage(2048 * k, 2048, BufferedImage.TYPE_INT_RGB)
 
     val g2d = res.createGraphics()
-    g2d.setFont(new Font("TimesRoman", Font.PLAIN, 64))
+    g2d.setFont(new Font("TimesRoman", Font.PLAIN, 32))
 
     for {i <- values.indices
          list = values(i)
@@ -54,15 +54,15 @@ object Model {
          img = rotateItem(Holder.r(Main.pairToIdx(z.num, z.idx.get)), z.rotation.get)
     } {
       for {
-        x <- 100 to 900
-        y <- 100 to 900
+        x <- 100 to 900 by 2
+        y <- 100 to 900 by 2
       } {
         val c = img.getColor(x, y)
         if (Handler.nonEmpty(c)) {
-          res.setRGB(j * 500 + x, i * 500 + y, img.getRGB(x, y))
+          res.setRGB(j * 250 + x / 2, i * 250 + y / 2, img.getRGB(x, y))
         }
       }
-      g2d.drawString(s"${z.num}", j * 500 + 300, i * 500 + 300)
+      g2d.drawString(s"${z.num}", j * 250 + 150, i * 250 + 150)
 
     }
 
