@@ -200,6 +200,10 @@ object Model {
   def drawAll(fromRight: Int, width: Int, fromBottom: Int, height: Int, k: Int = 1) = {
     ImageIO.write(Model.draw(Model.reflect(Model.read("model.txt").map(_.drop(fromRight).take(width)).dropRight(25 - fromBottom)).take(height), k = k), "png", new File(s"123.jpg")); "./open1".!
   }
+
+  def check(m: M) = {
+    m.flatten.collect { case ItemInfo(a, Some(b), _) => (a, b) }.groupBy(identity).filter { case (key, value) => value.size > 1 }.keys.toList
+  }
 }
 
 case class ItemInfo(num: Int, idx: Option[Int], rotation: Option[Int]) {
