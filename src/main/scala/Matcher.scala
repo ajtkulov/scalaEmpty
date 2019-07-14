@@ -270,6 +270,12 @@ object Index {
   def get(idx: Int): Int = list.filter { case (name, _) => name.contains((idx / 10).toString) }.head._2
 
   def getByShort(idx: Int): (String, Int) = list(idx - 1)
+
+  def getByLong(idx: Int): (Int, Int) = {
+    val main = idx / 10
+    val rem = idx % 10
+    (list.find { case (str, ii) => str.contains(main.toString) }.get._2, rem)
+  }
 }
 
 trait OnTable {
@@ -287,7 +293,7 @@ case class RealOnTable() extends OnTable {
     res.toSet
   }
 
-//  override def onTable(w: WItem): Boolean = all.contains(w.idx)
+  //  override def onTable(w: WItem): Boolean = all.contains(w.idx)
   override def onTable(w: WItem): Boolean = !extra.contains(w.idx)
 }
 
