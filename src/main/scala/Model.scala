@@ -83,6 +83,7 @@ object Model {
   lazy val neRot = List[Int](2, 0, 3, 1)
 
   lazy val outputShift = List[Int](0, 2, 3, 1)
+  lazy val invoutputShift = List[Int](0, 2, 1, 3)
 
   def find(model: M, value: Int): Pos = {
     val res = for {
@@ -118,6 +119,40 @@ object Model {
     res.groupBy(_._1).mapValues(_.toList.map(_._2))
   }
 
+  def neigh(model: M, pos: Pos): List[(Int, Int, ItemInfo)] = {
+    val res = scala.collection.mutable.ListBuffer[(Int, Int, ItemInfo)]()
+    for {
+      neighIdx <- 0 until 4
+    } {
+      val neighborhood = pos + neighborhoods(neighIdx)
+      if (inside(model, neighborhood)) {
+        val nn = model(neighborhood.y)(neighborhood.x)
+        if (nn.idx.isDefined && nn.rotation.isDefined) {
+          res.append(((neRot(neighIdx) + nn.rotation.get) % 4, neighIdx, nn))
+        }
+      }
+    }
+
+    res.toList
+  }
+
+  def find(list: List[(Int, Int, ItemInfo)])(implicit params: MatchParams) = {
+    val res = scala.collection.mutable.ListBuffer[WItem]()
+
+    for {
+      rot <- 0 until 4
+      item <- Holder.r.values
+    } {
+      if (list.forall {
+        case (r, ni, itemInfo) => Matcher.basicMatch(item, Holder.r(Main.pairToIdx(itemInfo.num, itemInfo.idx.get)), (invoutputShift(ni) + rot) % 4, r)(params, FakeMatcher)
+//        case (r, ni, itemInfo) => Matcher.basicMatch(item, Holder.r(Main.pairToIdx(itemInfo.num, itemInfo.idx.get)), (ni + rot) % 4, r)(params, FakeMatcher)
+      }) {
+        res.append(item)
+      }
+    }
+
+    res.distinct.toList
+  }
 
   def check(model: M, pos: Pos)(implicit params: MatchParams): Boolean = {
     var res = true
