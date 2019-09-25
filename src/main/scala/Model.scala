@@ -240,6 +240,10 @@ object Model {
     m.flatten.collect { case ItemInfo(a, Some(b), _) => (a, b) }.groupBy(identity).filter { case (key, value) => value.size > 1 }.keys.toList
   }
 
+  def ff(m: M, value: Int) = {
+    m.flatten.filter(_.num == value).foreach(println)
+  }
+
   def t(mod: M): Unit = {
     for {
       row <- 1 until mod.size
