@@ -34,11 +34,28 @@ object Main extends App {
 //    val item2 = Model.toItem("334.0.0")
 //    val z = Model.draw(List(List(item1, item2)))
 
+    println(Model.check(Model.read("model.txt")))
+    println(Model.check(Model.read("model.txt")).size)
 
-    Model.trySelect(Model.read("model.txt"), Pos(1, 1))(MatchParams.standard)
+//    println(Model.neigh(Model.read("model.txt"), Pos(1, 1)))
 
-    val model = Model.read("model.txt")
-    Model.draw(Model.reflect(model))
+//    println(Model.toString1(Model.read("model.txt")))
+
+//    ImageIO.write(Model.draw(Model.reflect(Model.read("model.txt").dropRight(14)).take(5)), "png", new File(s"123.jpg"))
+
+//    Model.draw(Model.reflect(Model.read("model.txt")))
+//
+//
+//    Model.trySelect(Model.read("model.txt"), Pos(1, 1))(MatchParams.standard)
+//
+//    val m = Model.read("model.txt"); Model.trySelect(m, Model.find(m, 188))(MatchParams.standard)
+//    Model.replace(Model.read("model.txt"))(MatchParams.precise)
+//    Model.replace(Model.read("model.txt"))(MatchParams.standard)
+//    Model.replace(Model.read("model.txt"))(MatchParams.all)
+//    Model.replace(Model.read("model.txt"))(MatchParams.all1)
+//
+//    val model = Model.read("model.txt")
+//    Model.draw(Model.reflect(model))
 
 //    Match.concave("/Users/pavel/code/scalaEmpty/center")
 //    Match.mark("/Users/pavel/code/puzzleInput/centred")
@@ -441,6 +458,8 @@ case class MatchParams(sizeDiff: Double, error: Int, space: Int, diffInConvex: I
 
 object MatchParams {
   val precise = MatchParams(0.025, 2000, 350, 800, 10)
+
+  val precise1 = MatchParams(0.035, 2000, 900, 1200, 10)
 
   val standard = MatchParams(0.05, 2000, 1500, 1500, 10)
 

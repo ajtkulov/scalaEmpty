@@ -60,8 +60,7 @@ object Match {
     }
   }
 
-  def oneMatch(idx: Int, edge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat) = {
-    val onTable: OnTable = RealOnTable()
+  def oneMatch(idx: Int, edge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat, onTable: OnTable) = {
     val r = Holder.r
     val m = r(idx)
 
@@ -73,8 +72,7 @@ object Match {
     }
   }
 
-  def oneMatchHarder(idx: Int, edge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat) = {
-    val onTable: OnTable = RealOnTable()
+  def oneMatchHarder(idx: Int, edge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat, onTable: OnTable) = {
     val r = Holder.r
     val m = r(idx)
 
@@ -86,8 +84,7 @@ object Match {
     }
   }
 
-  def twoMatchHarder(fst: Int, fstEdge: Int, snd: Int, sndEdge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat) = {
-    val onTable: OnTable = RealOnTable()
+  def twoMatchHarder(fst: Int, fstEdge: Int, snd: Int, sndEdge: Int, typ: Set[Int])(implicit params: MatchParams, mat: Mat, onTable: OnTable) = {
     val r = Holder.r
     val m = r(fst)
     val m2 = r(snd)

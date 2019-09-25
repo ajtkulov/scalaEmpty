@@ -239,6 +239,21 @@ object Model {
   def check(m: M) = {
     m.flatten.collect { case ItemInfo(a, Some(b), _) => (a, b) }.groupBy(identity).filter { case (key, value) => value.size > 1 }.keys.toList
   }
+
+  def t(mod: M): Unit = {
+    for {
+      row <- 1 until mod.size
+      tryAt <- 1 until mod.size
+      main = mod(row)(0)
+      to = mod(tryAt)(0)
+      m = Holder.r(Main.pairToIdx(main.num, main.idx.get))
+      t = Holder.r(Main.pairToIdx(to.num, to.idx.get))
+    } if (
+      Matcher.basicMatch(m, t, main.rotation.get, (to.rotation.get + 2) % 4)(MatchParams.standard, FakeMatcher)
+    ) {
+      println(s"$row, $tryAt")
+    }
+  }
 }
 
 case class ItemInfo(num: Int, idx: Option[Int], rotation: Option[Int]) {
