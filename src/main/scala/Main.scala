@@ -12,12 +12,15 @@ object Main extends App {
     trie.addWord("microsoft")
     trie.addWord("microsoft research")
     trie.addWord("mikrotik")
+    trie.addWord("tesla")
 
     println(trie.transitions)
     println(trie.fuzzyMatch("mocrosoft", 0))
     println(trie.fuzzyMatch("mocrosoft", 1))
     println(trie.fuzzyMatch("mocrosoft", 2))
     println(trie.fuzzyMatch("mocrosoft", 100))
+
+    println(trie.fuzzyMatchCont("microsoft", 1))
   }
 }
 
@@ -70,15 +73,18 @@ case class Trie(wordsAmount: Int, error: Double = 1e-9) {
     res.toList
   }
 
+  def fuzzyMatchCont(originWord: String, errors: Int): List[String] = {
+    val res = ArrayBuffer[String]()
+    fuzzyMatchInternalCont(originWord, 0, "", errors, res)
+    res.toList
+  }
+
   def fuzzyMatchInternal(originWord: String, curLength: Int, curPrefix: String, errors: Int, mutableResult: ArrayBuffer[String], limit: Int = 100): Unit = {
     if (errors >= 0 && finalWordsBloom.mightContain(curPrefix) &&  Math.abs(originWord.length - curLength) <= errors) {
       mutableResult.append(curPrefix)
     }
 
     if (errors >= 0 && mutableResult.size <= limit) {
-
-      fuzzyMatchInternal(originWord, curLength + 1, curPrefix, errors - 1, mutableResult)
-
       val next: mutable.Set[Char] = getTransitions(curPrefix.takeRight(transitionLength))
       for {
         c <- next
@@ -88,6 +94,30 @@ case class Trie(wordsAmount: Int, error: Double = 1e-9) {
           fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult)
         } else if (curLength < originWord.length && originWord(curLength) != c && prefixBloom.mightContain(str)) {
           fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult)
+        } else if (curLength >= originWord.length) {
+          fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult)
+        }
+      }
+    }
+  }
+
+  def fuzzyMatchInternalCont(originWord: String, curLength: Int, curPrefix: String, errors: Int, mutableResult: ArrayBuffer[String], limit: Int = 100): Unit = {
+    if (errors >= 0 && finalWordsBloom.mightContain(curPrefix) &&  Math.abs(originWord.length - curLength) <= errors) {
+      mutableResult.append(curPrefix)
+    }
+
+    if (errors >= 0 && mutableResult.size <= limit) {
+      val next: mutable.Set[Char] = getTransitions(curPrefix.takeRight(transitionLength))
+      for {
+        c <- next
+      } {
+        val str = curPrefix + c
+        if (curLength < originWord.length && originWord(curLength) == c && prefixBloom.mightContain(str)) {
+          fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult)
+        } else if (curLength < originWord.length && originWord(curLength) != c && prefixBloom.mightContain(str)) {
+          fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult)
+        } else if (curLength >= originWord.length) {
+          fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult)
         }
       }
     }
