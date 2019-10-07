@@ -20,7 +20,9 @@ object Main extends App {
     println(trie.fuzzyMatch("mocrosoft", 2))
     println(trie.fuzzyMatch("mocrosoft", 100))
 
-    println(trie.fuzzyMatchCont("microsoft", 1))
+    println(trie.fuzzyMatchCont("microsoft", 0))
+    println(trie.fuzzyMatchCont("mocrosoft", 1))
+    println(trie.fuzzyMatchCont("microsoft ", 0))
   }
 }
 
@@ -95,7 +97,7 @@ case class Trie(wordsAmount: Int, error: Double = 1e-9) {
         } else if (curLength < originWord.length && originWord(curLength) != c && prefixBloom.mightContain(str)) {
           fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult)
         } else if (curLength >= originWord.length) {
-          fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult)
+          fuzzyMatchInternal(originWord, curLength, str, errors - 1, mutableResult)
         }
       }
     }
@@ -113,11 +115,11 @@ case class Trie(wordsAmount: Int, error: Double = 1e-9) {
       } {
         val str = curPrefix + c
         if (curLength < originWord.length && originWord(curLength) == c && prefixBloom.mightContain(str)) {
-          fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult)
+          fuzzyMatchInternalCont(originWord, curLength + 1, str, errors, mutableResult)
         } else if (curLength < originWord.length && originWord(curLength) != c && prefixBloom.mightContain(str)) {
-          fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult)
+          fuzzyMatchInternalCont(originWord, curLength + 1, str, errors - 1, mutableResult)
         } else if (curLength >= originWord.length) {
-          fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult)
+          fuzzyMatchInternalCont(originWord, curLength, str, errors, mutableResult)
         }
       }
     }
