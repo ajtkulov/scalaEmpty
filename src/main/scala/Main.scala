@@ -7,35 +7,24 @@ import scala.collection.mutable.ArrayBuffer
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
+    val trie = read("all_names.csv")
+
+    println(trie.fuzzyMatchCont("LARRY", 0))
+  }
+
+  def read(fileName: String): Trie = {
     val trie = Trie(1000000)
+    val iter = scala.io.Source.fromFile(fileName).getLines().take(1000).map(x => x.filterNot(ch => ch == '"').toUpperCase)
+    iter.foreach(word => trie.addWord(word))
 
-    trie.addWord("microsoft")
-    trie.addWord("microsoft research")
-    trie.addWord("mikrotik")
-    trie.addWord("tesla")
-
-    println(trie.transitions)
-    println(trie.fuzzyMatch("mocrosoft", 0))
-    println(trie.fuzzyMatch("mocrosoft", 1))
-    println(trie.fuzzyMatch("mocrosoft", 2))
-    println(trie.fuzzyMatch("mocrosoft", 100))
-
-
-    println(trie.fuzzyMatchCont("microsoft", 0))
-    println(trie.fuzzyMatchCont("mocrosoft", 1))
-    println(trie.fuzzyMatchCont("microsoft ", 0))
-    println(trie.fuzzyMatchCont("microsoft rese", 0))
-    println(trie.fuzzyMatchCont("microsoft ress", 0))
-
-    println(trie.fuzzyMatch("icrosoft", 1))
-    println(trie.fuzzyMatch("icrosoft", 0))
-
+    trie
   }
 }
 
+
 case class Trie(wordsAmount: Int, error: Double = 1e-9) {
   lazy val charset = com.google.common.base.Charsets.US_ASCII
-  val avgWordLength = 6
+  val avgWordLength = 24
 
   val finalWordsBloom = BloomFilter.create[String](Funnels.stringFunnel(charset), wordsAmount, error)
   val prefixBloom = BloomFilter.create[String](Funnels.stringFunnel(charset), wordsAmount * avgWordLength, error)
@@ -99,13 +88,15 @@ case class Trie(wordsAmount: Int, error: Double = 1e-9) {
         c <- next
       } {
         val str = curPrefix + c
-        if (curLength < originWord.length && originWord(curLength) == c && prefixBloom.mightContain(str)) {
-          fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult, errorFunc)
-        } else if (curLength < originWord.length && originWord(curLength) != c && prefixBloom.mightContain(str)) {
-          fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult, errorFunc)
-          fuzzyMatchInternal(originWord, curLength, str, errors - 1, mutableResult, errorFunc)
-        } else if (curLength >= originWord.length) {
-          fuzzyMatchInternal(originWord, curLength, str, errorFunc(errors), mutableResult, errorFunc)
+        if (prefixBloom.mightContain(str)) {
+          if (curLength < originWord.length && originWord(curLength) == c) {
+            fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult, errorFunc)
+          } else if (curLength < originWord.length && originWord(curLength) != c) {
+            fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult, errorFunc)
+            fuzzyMatchInternal(originWord, curLength, str, errors - 1, mutableResult, errorFunc)
+          } else if (curLength >= originWord.length) {
+            fuzzyMatchInternal(originWord, curLength, str, errorFunc(errors), mutableResult, errorFunc)
+          }
         }
       }
     }
