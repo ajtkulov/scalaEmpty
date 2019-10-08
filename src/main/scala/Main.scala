@@ -20,11 +20,16 @@ object Main extends App {
     println(trie.fuzzyMatch("mocrosoft", 2))
     println(trie.fuzzyMatch("mocrosoft", 100))
 
+
     println(trie.fuzzyMatchCont("microsoft", 0))
     println(trie.fuzzyMatchCont("mocrosoft", 1))
     println(trie.fuzzyMatchCont("microsoft ", 0))
     println(trie.fuzzyMatchCont("microsoft rese", 0))
     println(trie.fuzzyMatchCont("microsoft ress", 0))
+
+    println(trie.fuzzyMatch("icrosoft", 1))
+    println(trie.fuzzyMatch("icrosoft", 0))
+
   }
 }
 
@@ -72,20 +77,20 @@ case class Trie(wordsAmount: Int, error: Double = 1e-9) {
   }
 
   def fuzzyMatch(originWord: String, errors: Int): List[String] = {
-    val res = ArrayBuffer[String]()
+    val res = mutable.Set[String]()
     fuzzyMatchInternal(originWord, 0, "", errors, res, _ - 1)
     res.toList
   }
 
   def fuzzyMatchCont(originWord: String, errors: Int): List[String] = {
-    val res = ArrayBuffer[String]()
+    val res = mutable.Set[String]()
     fuzzyMatchInternal(originWord, 0, "", errors, res, identity[Int])
     res.toList
   }
 
-  def fuzzyMatchInternal(originWord: String, curLength: Int, curPrefix: String, errors: Int, mutableResult: ArrayBuffer[String], errorFunc: Int => Int, limit: Int = 100): Unit = {
+  def fuzzyMatchInternal(originWord: String, curLength: Int, curPrefix: String, errors: Int, mutableResult: mutable.Set[String], errorFunc: Int => Int, limit: Int = 100): Unit = {
     if (errors >= 0 && finalWordsBloom.mightContain(curPrefix) && Math.abs(originWord.length - curLength) <= errors) {
-      mutableResult.append(curPrefix)
+      mutableResult.add(curPrefix)
     }
 
     if (errors >= 0 && mutableResult.size <= limit) {
@@ -98,6 +103,7 @@ case class Trie(wordsAmount: Int, error: Double = 1e-9) {
           fuzzyMatchInternal(originWord, curLength + 1, str, errors, mutableResult, errorFunc)
         } else if (curLength < originWord.length && originWord(curLength) != c && prefixBloom.mightContain(str)) {
           fuzzyMatchInternal(originWord, curLength + 1, str, errors - 1, mutableResult, errorFunc)
+          fuzzyMatchInternal(originWord, curLength, str, errors - 1, mutableResult, errorFunc)
         } else if (curLength >= originWord.length) {
           fuzzyMatchInternal(originWord, curLength, str, errorFunc(errors), mutableResult, errorFunc)
         }
