@@ -1,30 +1,47 @@
 package main
 
 import com.google.common.hash.{BloomFilter, Funnels}
-
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    val trie = read("all_names.csv")
+    Stats.stats("all_names.csv")
 
+    val trie = read("all_names.csv")
     println(trie.fuzzyMatchCont("LARRY", 0))
   }
 
   def read(fileName: String): Trie = {
     val trie = Trie(1000000)
-    val iter = scala.io.Source.fromFile(fileName).getLines().take(1000).map(x => x.filterNot(ch => ch == '"').toUpperCase)
+    val iter = scala.io.Source.fromFile(fileName).getLines().take(1000).map(x => CompanyUtils.normalize(x))
     iter.foreach(word => trie.addWord(word))
 
     trie
   }
 }
 
+object CompanyUtils {
+  def normalize(name: String): String = {
+    name.map {
+      case x if !x.isLetter => ' '
+      case x => x
+    }.toUpperCase
+  }
+}
 
-case class Trie(wordsAmount: Int, error: Double = 1e-9) {
+object Stats {
+  def stats(fileName: String) = {
+    val map = mutable.Map[String, Int]().withDefaultValue(0)
+    scala.io.Source.fromFile(fileName).getLines().map(CompanyUtils.normalize).flatMap(_.split(" ")).foreach {
+      word => map(word) = map(word) + 1
+    }
+
+    map.toList.sortBy(_._2)(Ordering[Int].reverse).take(1000).foreach(println)
+  }
+}
+
+case class Trie(wordsAmount: Int, error: Double = 1e-9, avgWordLength: Int = 24) {
   lazy val charset = com.google.common.base.Charsets.US_ASCII
-  val avgWordLength = 24
 
   val finalWordsBloom = BloomFilter.create[String](Funnels.stringFunnel(charset), wordsAmount, error)
   val prefixBloom = BloomFilter.create[String](Funnels.stringFunnel(charset), wordsAmount * avgWordLength, error)
