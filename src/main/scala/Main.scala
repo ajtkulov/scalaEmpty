@@ -1,14 +1,19 @@
 package main
 
 import com.google.common.hash.{BloomFilter, Funnels}
+import infrastructure.FileUtils
+import infrastructure.FileUtils.FileName
+
 import scala.collection.mutable
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    Stats.stats("all_names.csv")
+    Stats.transform("all_names.csv", "output.txt")
 
-    val trie = read("all_names.csv")
-    println(trie.fuzzyMatchCont("LARRY", 0))
+    //    Stats.stats("all_names.csv")
+
+    //    val trie = read("all_names.csv")
+    //    println(trie.fuzzyMatchCont("LARRY", 0))
   }
 
   def read(fileName: String): Trie = {
@@ -25,7 +30,7 @@ object CompanyUtils {
     name.map {
       case x if !x.isLetter => ' '
       case x => x
-    }.toUpperCase
+    }.toUpperCase.split(" ").filter(_ != "").mkString(" ")
   }
 }
 
@@ -37,6 +42,10 @@ object Stats {
     }
 
     map.toList.sortBy(_._2)(Ordering[Int].reverse).take(1000).foreach(println)
+  }
+
+  def transform(source: FileName, dest: FileName): Unit = {
+    FileUtils.write(dest, scala.io.Source.fromFile(source).getLines().map(CompanyUtils.normalize))
   }
 }
 
