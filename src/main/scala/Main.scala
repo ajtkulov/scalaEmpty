@@ -5,10 +5,13 @@ import infrastructure.FileUtils
 import infrastructure.FileUtils.FileName
 
 import scala.collection.mutable
+import ReduceUtils._
 
 object Main extends App {
   override def main(args: Array[String]): Unit = {
-    Stats.transform("all_names.csv", "output.txt")
+    val z = Stats.mulitStats(List("xaa", "xab"))
+    println(z.size)
+//    Stats.transform("all_names.csv", "output.txt")
 
     //    Stats.stats("all_names.csv")
 
@@ -37,11 +40,15 @@ object CompanyUtils {
 object Stats {
   def stats(fileName: String) = {
     val map = mutable.Map[String, Int]().withDefaultValue(0)
-    scala.io.Source.fromFile(fileName).getLines().map(CompanyUtils.normalize).flatMap(_.split(" ")).foreach {
+    scala.io.Source.fromFile(fileName).getLines().flatMap(_.split(" ")).foreach {
       word => map(word) = map(word) + 1
     }
 
-    map.toList.sortBy(_._2)(Ordering[Int].reverse).take(1000).foreach(println)
+    map.toMap
+  }
+
+  def mulitStats(fileNames: List[FileName]) = {
+    fileNames.par.map(stats).toList.reduce(_ + _)
   }
 
   def transform(source: FileName, dest: FileName): Unit = {
